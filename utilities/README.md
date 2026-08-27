@@ -1,8 +1,8 @@
-# Utilities
+# Operations toolkit command reference
 
-> 🔧 Debugging and monitoring tools for Discogsography development
+> 🔧 Read-only debugging and monitoring tools for GrooveMap operations
 
-This directory contains utility scripts to help debug, monitor, and analyze the Discogsography system during development and operations.
+These packaged commands inspect a GrooveMap deployment without mutating queues or databases.
 
 ## 🛠️ Available Tools
 
@@ -12,10 +12,10 @@ Scans recent `docker compose logs` output for the pipeline services for error pa
 
 ```bash
 # Check the last 60 minutes (default) across all pipeline services
-uv run python utilities/check_errors.py
+uv run groovemap-check-errors
 
 # Check a custom time window (minutes)
-uv run python utilities/check_errors.py 30
+uv run groovemap-check-errors 30
 
 # Or use just
 just check-errors
@@ -32,7 +32,7 @@ just check-errors
 Displays current RabbitMQ queue statistics.
 
 ```bash
-uv run python utilities/check_queues.py
+uv run groovemap-check-queues
 ```
 
 **Shows:**
@@ -48,10 +48,10 @@ Real-time monitoring of RabbitMQ queue activity.
 
 ```bash
 # Monitor with auto-refresh (default: every 5 seconds)
-uv run python utilities/monitor_queues.py
+uv run groovemap-monitor-queues
 
 # Custom refresh interval (seconds)
-uv run python utilities/monitor_queues.py 10
+uv run groovemap-monitor-queues 10
 
 # Or use just
 just monitor
@@ -69,7 +69,7 @@ Comprehensive system health dashboard.
 
 ```bash
 # Run system monitor
-uv run python utilities/system_monitor.py
+uv run groovemap-system-monitor
 
 # Or use just
 just system-monitor
@@ -88,7 +88,7 @@ just system-monitor
 Peeks at (non-destructively, via `basic_get` + `basic_nack` requeue) a single message from a consumer queue and analyzes its structure — checks required/optional fields for the given data type and flags common issues (missing fields, malformed nested artist entries).
 
 ```bash
-uv run python utilities/debug_message.py <queue_type> [consumer]
+uv run groovemap-debug-message <queue_type> [consumer]
 ```
 
 **Arguments:**
@@ -101,21 +101,21 @@ uv run python utilities/debug_message.py <queue_type> [consumer]
 Checks whether a process matching the given name is currently running (via `psutil.process_iter`), matching against each process's command line. Exits `0` if found, `1` otherwise.
 
 ```bash
-uv run python utilities/healthcheck.py <process_name>
+uv run groovemap-healthcheck <process_name>
 ```
 
 ## 🔒 Security Notes
 
-These utilities include security suppressions for development use:
+These utilities include narrowly scoped security suppressions for fixed executable names:
 
 - `# nosec B404 B603 B607` / `# noqa: S603 S607` - For `docker compose`/`docker exec` subprocess commands
 
 These suppressions are appropriate because:
 
-- Tools are for development/debugging only
-- No user input is passed to commands
-- All connections are to localhost services
-- Environment variables override any defaults
+- subprocess executable names are fixed;
+- every subprocess call has a timeout;
+- credentials use environment variables or `<NAME>_FILE` and are never printed;
+- operators should supply least-privileged read-only credentials.
 
 ## 💡 Usage Tips
 
@@ -126,6 +126,5 @@ These suppressions are appropriate because:
 
 ## 🔗 Related Documentation
 
-- [README.md](../README.md) - Project overview
-- [CLAUDE.md](../CLAUDE.md) - Development guide
-- [Task Automation](../docs/task-automation.md) - Just commands
+- [Repository README](../README.md) - setup, security boundary, and release policy
+- [Extraction record](../docs/extraction.md) - retained history and source paths

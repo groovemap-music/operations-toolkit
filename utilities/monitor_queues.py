@@ -7,7 +7,7 @@ from typing import Any
 
 import requests
 
-from common.config import get_secret
+from utilities.secrets import get_secret
 
 
 def get_queue_stats(
@@ -83,6 +83,11 @@ def monitor_queues(interval: int = 5) -> None:
         print("\nMonitoring stopped.")
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Run the queue monitor CLI."""
     interval = int(sys.argv[1]) if len(sys.argv) > 1 else 5
     monitor_queues(interval)
+
+
+if __name__ == "__main__":
+    main()

@@ -5,7 +5,7 @@ import os
 
 import requests
 
-from common.config import get_secret
+from utilities.secrets import get_secret
 
 
 def check_rabbitmq_queues() -> None:

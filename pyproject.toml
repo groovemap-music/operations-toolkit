@@ -1,0 +1,109 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "groovemap-operations-toolkit"
+version = "0.1.0"
+description = "Queue, error, system, and deployment inspection CLI utilities for GrooveMap"
+authors = [{name = "Robert Wlodarczyk", email = "robert@simplicityguy.com"}]
+readme = "README.md"
+requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "pika>=1.4.4",
+    "psutil>=7.2.2",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+groovemap-check-errors = "utilities.check_errors:main"
+groovemap-check-queues = "utilities.check_queues:check_rabbitmq_queues"
+groovemap-debug-message = "utilities.debug_message:main"
+groovemap-healthcheck = "utilities.healthcheck:main"
+groovemap-monitor-queues = "utilities.monitor_queues:main"
+groovemap-system-monitor = "utilities.system_monitor:monitor_system"
+
+[project.urls]
+Homepage = "https://groovemap.music"
+Repository = "https://github.com/groovemap-music/operations-toolkit"
+Issues = "https://github.com/groovemap-music/operations-toolkit/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["utilities"]
+
+[dependency-groups]
+dev = [
+    "build>=1.3.0",
+    "commitizen>=4.9.1",
+    "cyclonedx-bom>=7.2.1",
+    "mypy>=2.3.1",
+    "pip-audit>=2.10.1",
+    "pip-licenses>=5.0.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.4",
+    "types-psutil>=7.2.2.20260518",
+    "types-requests>=2.32.4.20260107",
+]
+
+[tool.uv]
+exclude-newer = "2 days"
+
+[tool.ruff]
+extend-exclude = ["utilities/catalog_contract.py"]
+line-length = 150
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["ARG", "B", "C4", "E", "F", "I", "PLC", "PTH", "RUF", "S", "SIM", "T20", "TCH", "UP", "W"]
+ignore = ["C901", "E501", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["utilities"]
+lines-after-imports = 2
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["PLC", "S105", "T201"]
+"utilities/*.py" = ["T201"]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+packages = ["utilities"]
+
+[[tool.mypy.overrides]]
+module = ["pika.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-ra -q --strict-markers --tb=short"
+testpaths = ["tests"]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "uv"
+version_scheme = "pep440"
+tag_format = "v$version"
+annotated_tag = true
+update_changelog_on_bump = true
+changelog_file = "CHANGELOG.md"
+changelog_start_rev = "b4c9a3c"

@@ -7,13 +7,13 @@ from typing import Any
 
 import pika
 
-from common.config import get_secret
 from utilities.catalog_contract import (
     AMQP_QUEUE_PREFIX_BRAINZGRAPHINATOR,
     AMQP_QUEUE_PREFIX_BRAINZTABLEINATOR,
     AMQP_QUEUE_PREFIX_GRAPHINATOR,
     AMQP_QUEUE_PREFIX_TABLEINATOR,
 )
+from utilities.secrets import get_secret
 
 
 def get_message_from_queue(
