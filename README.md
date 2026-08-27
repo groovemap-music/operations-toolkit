@@ -49,5 +49,5 @@ See [utilities/README.md](utilities/README.md) for command behavior and
 
 ## License
 
-The current tree is licensed under the PolyForm Noncommercial License 1.0.0. Historical
-revisions retain the license text applicable at that time.
+The current tree is licensed under the [MIT License](LICENSE). Historical revisions retain
+the license text applicable at that time.

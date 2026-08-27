@@ -16,7 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
 ]
-license = "PolyForm-Noncommercial-1.0.0"
+license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
     "pika>=1.4.4",
