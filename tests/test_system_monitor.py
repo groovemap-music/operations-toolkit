@@ -123,8 +123,8 @@ def test_check_postgres_status_error_without_stderr() -> None:
 # monitor_system (integration over the mocked collectors)
 # --------------------------------------------------------------------------- #
 def test_monitor_system_all_healthy(capsys) -> None:
-    containers = [{"Name": "discogsography-graphinator", "State": "running", "Health": "healthy"}]
-    queues = [{"name": "discogsography-discogs-artists", "messages_ready": 2, "messages_unacknowledged": 1, "messages": 3}]
+    containers = [{"Name": "groovemap-graphinator", "State": "running", "Health": "healthy"}]
+    queues = [{"name": "groovemap-discogs-artists", "messages_ready": 2, "messages_unacknowledged": 1, "messages": 3}]
     with (
         patch.object(system_monitor, "get_docker_stats", return_value=containers),
         patch.object(system_monitor, "get_queue_stats", return_value=queues),
@@ -135,7 +135,7 @@ def test_monitor_system_all_healthy(capsys) -> None:
         system_monitor.monitor_system()
 
     out = capsys.readouterr().out
-    assert "discogsography-graphinator" in out
+    assert "groovemap-graphinator" in out
     assert "Total messages: 3" in out
     assert "neo4j ok" in out
     assert "pg ok" in out

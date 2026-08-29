@@ -35,7 +35,7 @@ def get_queue_stats(
 ) -> list[dict[str, Any]] | None:
     """Fetch queue statistics from RabbitMQ Management API."""
     base_url = base_url or os.environ.get("RABBITMQ_URL", "http://localhost:15672")
-    username = username or os.environ.get("RABBITMQ_USERNAME", "discogsography")
+    username = username or os.environ.get("RABBITMQ_USERNAME", "groovemap")
     password = password or get_secret("RABBITMQ_PASSWORD", "")
     try:
         response = requests.get(f"{base_url}/api/queues", auth=(username, password), timeout=10)
@@ -77,7 +77,7 @@ def check_neo4j_status() -> str:
                 "NEO4J_USERNAME",
                 "-e",
                 "NEO4J_PASSWORD",
-                "discogsography-neo4j",
+                "groovemap-neo4j",
                 "cypher-shell",
                 "MATCH (n) RETURN labels(n)[0] as label, count(n) as count ORDER BY count DESC LIMIT 10",
             ],
@@ -100,12 +100,12 @@ def check_postgres_status() -> str:
             [  # noqa: S607
                 "docker",
                 "exec",
-                "discogsography-postgres",
+                "groovemap-postgres",
                 "psql",
                 "-U",
-                os.environ.get("POSTGRES_USERNAME", "discogsography"),
+                os.environ.get("POSTGRES_USERNAME", "groovemap"),
                 "-d",
-                os.environ.get("POSTGRES_DATABASE", "discogsography"),
+                os.environ.get("POSTGRES_DATABASE", "groovemap"),
                 "-t",
                 "-c",
                 "SELECT relname, pg_size_pretty(pg_relation_size(schemaname||'.'||relname)) as size, n_live_tup as rows FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 10;",
@@ -123,7 +123,7 @@ def check_postgres_status() -> str:
 
 def monitor_system() -> None:
     """Monitor the entire system."""
-    print("System Monitor for Discogsography")
+    print("System Monitor for GrooveMap")
     print("=" * 80)
 
     # Check Docker containers

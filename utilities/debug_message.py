@@ -23,7 +23,7 @@ def get_message_from_queue(
     password: str | None = None,
 ) -> dict[str, Any] | None:
     """Peek at a message from the queue without consuming it."""
-    username = username or os.environ.get("RABBITMQ_USERNAME", "discogsography")
+    username = username or os.environ.get("RABBITMQ_USERNAME", "groovemap")
     password = password or get_secret("RABBITMQ_PASSWORD", "")
     connection = None
     try:

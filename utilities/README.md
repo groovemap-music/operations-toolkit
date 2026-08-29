@@ -1,5 +1,8 @@
 # Operations toolkit command reference
 
+These commands are owned by the `operations-toolkit` repository. See the repository
+[documentation index](../docs/README.md) for safety boundaries and provenance.
+
 > 🔧 Read-only debugging and monitoring tools for GrooveMap operations
 
 These packaged commands inspect a GrooveMap deployment without mutating queues or databases.
@@ -61,7 +64,7 @@ just monitor
 
 - Live updates every 5 seconds by default (configurable via a positional interval argument)
 - Highlights queues with unacknowledged messages in yellow
-- Running total of messages across all `discogsography`/`musicbrainz` queues
+- Running total of messages across all `groovemap`/`musicbrainz` queues
 
 ### system_monitor.py
 

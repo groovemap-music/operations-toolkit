@@ -17,7 +17,7 @@ def _response(payload: list[dict]) -> MagicMock:
 
 
 def test_get_queue_stats_success() -> None:
-    payload = [{"name": "discogsography-discogs-graphinator-artists"}]
+    payload = [{"name": "groovemap-discogs-graphinator-artists"}]
     with patch.object(monitor_queues.requests, "get", return_value=_response(payload)) as get:
         result = monitor_queues.get_queue_stats(base_url="http://rmq", username="u", password="p")  # noqa: S106
     assert result == payload
@@ -34,8 +34,8 @@ def test_get_queue_stats_request_error(capsys) -> None:
 
 def test_monitor_queues_renders_then_stops(capsys) -> None:
     payload = [
-        {"name": "discogsography-discogs-graphinator-artists", "messages_ready": 4, "messages_unacknowledged": 2, "messages": 6},
-        {"name": "discogsography-musicbrainz-tableinator-releases", "messages_ready": 1, "messages_unacknowledged": 0, "messages": 1},
+        {"name": "groovemap-discogs-graphinator-artists", "messages_ready": 4, "messages_unacknowledged": 2, "messages": 6},
+        {"name": "groovemap-musicbrainz-tableinator-releases", "messages_ready": 1, "messages_unacknowledged": 0, "messages": 1},
         {"name": "ignored-queue", "messages_ready": 9, "messages_unacknowledged": 9, "messages": 9},
     ]
     with (

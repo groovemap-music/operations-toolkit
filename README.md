@@ -44,8 +44,8 @@ PEP 621 version in `pyproject.toml` and uses annotated `v$version` tags. The dry
 generates checksums, an SBOM, third-party notices, and build metadata. `just bump-preview`
 and `just release-dry-run` do not create commits, tags, releases, or published packages.
 
-See [utilities/README.md](utilities/README.md) for command behavior and
-[docs/extraction.md](docs/extraction.md) for the history-preserving extraction record.
+See [utilities/README.md](utilities/README.md) for command behavior and the
+[documentation index](docs/README.md) for repository guidance and provenance.
 
 ## License
 

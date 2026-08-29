@@ -19,7 +19,7 @@ def _response(payload: list[dict]) -> MagicMock:
 def test_renders_consumer_queues(capsys) -> None:
     payload = [
         {
-            "name": "discogsography-discogs-graphinator-artists",
+            "name": "groovemap-discogs-graphinator-artists",
             "messages": 10,
             "messages_ready": 7,
             "messages_unacknowledged": 3,
@@ -34,7 +34,7 @@ def test_renders_consumer_queues(capsys) -> None:
         check_queues.check_rabbitmq_queues()
 
     out = capsys.readouterr().out
-    assert "discogsography-discogs-graphinator-artists" in out
+    assert "groovemap-discogs-graphinator-artists" in out
     assert "unrelated-queue" not in out  # filtered out
     assert "Ack Rate: 1.50 msg/s" in out
     assert "Publish Rate: 2.25 msg/s" in out
@@ -50,7 +50,7 @@ def test_no_consumer_queues(capsys) -> None:
 
 
 def test_queue_without_stats_or_consumers(capsys) -> None:
-    payload = [{"name": "discogsography-discogs-tableinator-artists", "messages": 0, "consumers": 0}]
+    payload = [{"name": "groovemap-discogs-tableinator-artists", "messages": 0, "consumers": 0}]
     with patch.object(check_queues.requests, "get", return_value=_response(payload)):
         check_queues.check_rabbitmq_queues()
     out = capsys.readouterr().out

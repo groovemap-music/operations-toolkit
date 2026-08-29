@@ -17,7 +17,7 @@ def get_queue_stats(
 ) -> list[dict[str, Any]] | None:
     """Fetch queue statistics from RabbitMQ Management API."""
     base_url = base_url or os.environ.get("RABBITMQ_URL", "http://localhost:15672")
-    username = username or os.environ.get("RABBITMQ_USERNAME", "discogsography")
+    username = username or os.environ.get("RABBITMQ_USERNAME", "groovemap")
     password = password or get_secret("RABBITMQ_PASSWORD", "")
     try:
         response = requests.get(f"{base_url}/api/queues", auth=(username, password), timeout=10)
@@ -61,7 +61,7 @@ def monitor_queues(interval: int = 5) -> None:
 
             total_messages = 0
             for queue in sorted(queues, key=lambda x: x["name"]):
-                if "discogsography" in queue["name"] or "musicbrainz" in queue["name"]:
+                if "groovemap" in queue["name"] or "musicbrainz" in queue["name"]:
                     name = queue["name"]
                     ready = queue.get("messages_ready", 0)
                     unacked = queue.get("messages_unacknowledged", 0)

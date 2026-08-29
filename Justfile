@@ -22,7 +22,7 @@ typecheck:
     uv run mypy
 
 test:
-    uv run pytest
+    uv run pytest --cov=utilities --cov-report=term-missing --cov-report=xml
 
 contract-check:
     uv run python scripts/check-contract.py
