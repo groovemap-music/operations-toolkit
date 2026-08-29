@@ -125,7 +125,7 @@ def test_analyze_truncates_large_message(capsys) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# analyze_message — MusicBrainz schema regression (discogsography-y69g)
+# analyze_message — MusicBrainz schema regression
 # --------------------------------------------------------------------------- #
 def test_analyze_musicbrainz_release_uses_name_not_title(capsys) -> None:
     """A real, well-formed MusicBrainz release message (per
@@ -219,7 +219,7 @@ def test_main_musicbrainz_consumer_passes_musicbrainz_source(monkeypatch: pytest
 
 
 # --------------------------------------------------------------------------- #
-# main — cross-source (consumer, queue_type) rejection (discogsography-y69g)
+# main — cross-source (consumer, queue_type) rejection
 # --------------------------------------------------------------------------- #
 def test_main_rejects_discogs_only_type_for_brainz_consumer(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     """ "masters" only exists on the Discogs side — no MusicBrainz consumer ever

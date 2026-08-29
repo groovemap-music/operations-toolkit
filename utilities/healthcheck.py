@@ -14,7 +14,7 @@ def _excluded_pids() -> set[int]:
     argv[1] IS the search string, so without this exclusion check_process()
     always matches itself. Under `uv run` the parent chain is deeper than one
     hop (uv -> python), so every ancestor (not just the immediate parent) is
-    excluded (discogsography-pyt3).
+    excluded. This self-match failure remains covered by regression tests.
     """
     excluded = {os.getpid()}
     try:

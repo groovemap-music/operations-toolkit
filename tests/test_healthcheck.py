@@ -58,8 +58,9 @@ def test_check_process_swallows_psutil_errors() -> None:
 
 
 class TestSelfExclusion:
-    """Regression for discogsography-pyt3: check_process() must not match its own
-    (or an ancestor's) process — its own cmdline is
+    """The healthcheck must not match its own or an ancestor's process.
+
+    Its own cmdline is
     ['python', 'healthcheck.py', '<process_name>'], where argv[1] IS the search
     string, so without exclusion it always matched itself and the healthcheck
     could never report a dead service.
