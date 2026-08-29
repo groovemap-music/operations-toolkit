@@ -1,6 +1,6 @@
 """Tests for utilities/system_monitor.py — the whole-system status dashboard.
 
-Pins the CLAUDE.md subprocess-timeout contract (every ``subprocess.run`` passes
+Pins the repository subprocess-timeout contract (every ``subprocess.run`` passes
 ``timeout=`` and both ``CalledProcessError`` and ``TimeoutExpired`` are caught)
 and the split extractor service names used when scanning logs.
 """
@@ -143,7 +143,8 @@ def test_monitor_system_all_healthy(capsys) -> None:
 
 
 def test_monitor_system_honors_overridden_queue_prefixes(capsys) -> None:
-    """discogsography-dvmi: the queue filter and the display shortening must both follow
+    """The queue filter and display shortening must both follow configured prefixes.
+
     DISCOGS_EXCHANGE_PREFIX / MUSICBRAINZ_EXCHANGE_PREFIX. With the prefixes hardcoded,
     an override made the filter match nothing and the monitor reported an empty broker."""
     queues = [
@@ -191,8 +192,9 @@ def test_monitor_system_all_unavailable(capsys) -> None:
 
 
 def test_monitor_system_empty_queue_list_is_not_a_fetch_failure(capsys) -> None:
-    """Regression for discogsography-gpai: get_queue_stats() returning [] (a
-    successful HTTP 200 with no queues declared yet) must not print the same
+    """An empty successful queue response must remain distinct from a fetch failure.
+
+    A successful HTTP 200 with no queues declared yet must not print the same
     "Unable to fetch queue data" message as a genuine RequestException (None).
     """
     with (
@@ -210,7 +212,7 @@ def test_monitor_system_empty_queue_list_is_not_a_fetch_failure(capsys) -> None:
 
 
 def test_monitor_system_scans_split_extractor_services() -> None:
-    """CLAUDE.md contract: the error scan uses both split extractor services."""
+    """Repository contract: the error scan uses both split extractor services."""
     seen: list[str] = []
 
     def record(service: str, _lines: int = 20) -> str:

@@ -67,8 +67,9 @@ def test_monitor_queues_handles_empty_fetch(capsys) -> None:
 
 
 def test_monitor_queues_empty_list_is_not_a_fetch_failure(capsys) -> None:
-    """Regression for discogsography-gpai: get_queue_stats() returning [] is a
-    successful HTTP 200 with no queues declared yet (e.g. right after `just up`,
+    """An empty queue list is a successful broker response, not a fetch failure.
+
+    A successful HTTP 200 with no queues declared yet (e.g. right after `just up`,
     before the extractor/consumers connect) — it must not print the same
     "Failed to fetch queue data" message as a genuine RequestException (None).
     """

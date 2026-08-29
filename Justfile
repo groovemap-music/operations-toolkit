@@ -6,7 +6,7 @@ default:
 setup:
     uv sync --dev --frozen
 
-check: format-check lint typecheck test contract-check build install-check license-check secret-scan bump-preview
+check: format-check lint typecheck test contract-check public-boundary-check build install-check license-check secret-scan bump-preview
 
 format:
     uv run ruff format .
@@ -26,6 +26,9 @@ test:
 
 contract-check:
     uv run python scripts/check-contract.py
+
+public-boundary-check:
+    uv run python scripts/check_public_boundary.py
 
 build:
     uv build --out-dir dist --clear

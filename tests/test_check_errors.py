@@ -1,6 +1,6 @@
 """Tests for utilities/check_errors.py — the service-log error scanner.
 
-Also pins two CLAUDE.md contracts:
+Also pins two repository contracts:
 - ``subprocess.run`` is always called with ``timeout=`` and ``TimeoutExpired``
   is caught.
 - The scanned service list uses the split extractor service names
@@ -103,7 +103,7 @@ def test_main_default_window_and_no_errors(monkeypatch: pytest.MonkeyPatch, caps
 
 
 def test_main_scans_split_extractor_services(monkeypatch: pytest.MonkeyPatch) -> None:
-    """CLAUDE.md contract: no bare 'extractor' service; both split names present."""
+    """Repository contract: no bare 'extractor' service; both split names present."""
     monkeypatch.setattr(check_errors.sys, "argv", ["check_errors.py"])
     seen: list[str] = []
 
