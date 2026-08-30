@@ -20,7 +20,7 @@ def _excluded_pids() -> set[int]:
     try:
         proc = psutil.Process(os.getpid())
         excluded.update(p.pid for p in proc.parents())
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
+    except psutil.NoSuchProcess, psutil.AccessDenied:
         pass
     return excluded
 
@@ -35,7 +35,7 @@ def check_process(process_name: str) -> bool:
             cmdline = proc.info.get("cmdline") or []
             if cmdline and any(process_name in arg for arg in cmdline):
                 return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
+        except psutil.NoSuchProcess, psutil.AccessDenied:
             pass
     return False
 

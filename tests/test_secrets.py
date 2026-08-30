@@ -1,10 +1,14 @@
 """Tests for secret-file and environment lookup precedence."""
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from utilities.secrets import get_secret
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_file_value_takes_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
