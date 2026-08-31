@@ -1,7 +1,12 @@
 # Operations toolkit documentation
 
-- [Command reference](../utilities/README.md)
-- [Source-history provenance](extraction.md)
+- [Architecture](architecture.md) — public repository boundary and data flow.
+- [Configuration](configuration.md) — supported environment variables and synthetic setup.
+- [Public Python API](python-api.md) — stable reusable queue-name and secret lookup helpers.
+- [Security](security.md) — access, output, and publication constraints.
+- [Source-history provenance](extraction.md) — history-preserving extraction summary.
+- [Release compliance](release-compliance.md) — package, dependency, and publication evidence.
+- [History rewrite gate](history-rewrite-gate.md) — backed-up local rehearsal and later approval boundary.
+- [Command reference](../utilities/README.md) — all supported CLIs and their behavior.
 
-The root [README](../README.md) defines safety boundaries and the stable development
-interface.
+The root [README](../README.md) provides the project overview and development interface.

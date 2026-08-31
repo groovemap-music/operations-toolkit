@@ -146,7 +146,7 @@ def monitor_system() -> None:
     # get_queue_stats() returns None only on a genuine fetch failure
     # (RequestException); an empty list is a successful 200 response from a broker
     # with no queues declared yet and must not be conflated with a connectivity
-    # error (discogsography-gpai — mirror of the same fix in monitor_queues.py).
+    # error. This mirrors the regression guard in monitor_queues.py.
     if queues is None:
         print("  Unable to fetch queue data")
     elif not queues:
@@ -157,7 +157,7 @@ def monitor_system() -> None:
             if queue["name"].startswith((DISCOGS_EXCHANGE_PREFIX, MUSICBRAINZ_EXCHANGE_PREFIX)):
                 # Shorten for display using the env-derived prefixes, not hardcoded
                 # literals — under a prefix override the labels stayed fully qualified
-                # and the filter above matched nothing at all (discogsography-dvmi).
+                # and the filter above would match nothing at all.
                 name = queue["name"].replace(f"{DISCOGS_EXCHANGE_PREFIX}-", "").replace(f"{MUSICBRAINZ_EXCHANGE_PREFIX}-", "mb-")
                 ready = queue.get("messages_ready", 0)
                 unacked = queue.get("messages_unacknowledged", 0)

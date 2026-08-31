@@ -57,11 +57,10 @@ def get_message_from_queue(
 
 # Field specs are keyed on (source, message_type) because the type names
 # "artists"/"labels"/"releases" are shared between Discogs and MusicBrainz, but
-# the wire schemas differ (see extractor/src/jsonl_parser.rs, the schema source of
-# truth per CLAUDE.md). Discogs messages carry "title" for masters/releases;
+# the wire schemas differ. Discogs messages carry "title" for masters/releases;
 # MusicBrainz messages carry "name" for every type (parse_mb_release_line emits
 # "name": v["title"]) and always set "sha256" to the empty string rather than
-# omitting it (discogsography-y69g).
+# omitting it. Keep these distinctions covered as a wire-shape regression.
 _DISCOGS_FIELD_SPECS: dict[str, tuple[list[str], list[str]]] = {
     "masters": (["id", "title", "sha256"], ["artists", "genres", "styles", "year"]),
     "artists": (["id", "name", "sha256"], ["members", "groups", "aliases"]),
@@ -82,7 +81,7 @@ def analyze_message(message: dict[str, Any] | None, message_type: str, source: s
 
     ``source`` is "discogs" or "musicbrainz" and selects the correct field
     schema for ``message_type`` — the two sources share type names but not
-    wire shapes (discogsography-y69g).
+    wire shapes. The source/entity distinction is part of the promoted contract.
     """
     print(f"\n📋 Message Analysis for {message_type} ({source})")
     print("=" * 60)
@@ -165,7 +164,7 @@ _MUSICBRAINZ_TYPES = ["artists", "labels", "release-groups", "releases"]
 # Consumers that read from the MusicBrainz fanout exchanges — every other
 # consumer (graphinator/tableinator) reads from the Discogs exchanges. Used to
 # pick the correct queue-type set AND field schema for a given consumer
-# (discogsography-y69g).
+# by the promoted producer contract.
 _BRAINZ_CONSUMERS = {"brainzgraphinator", "brainztableinator"}
 
 

@@ -6,7 +6,7 @@ default:
 setup:
     uv sync --dev --frozen
 
-check: format-check lint typecheck test contract-check build install-check license-check secret-scan bump-preview
+check: format-check lint typecheck test contract-check public-boundary-check automation-check build install-check license-check secret-scan bump-preview
 
 format:
     uv run ruff format .
@@ -24,8 +24,17 @@ typecheck:
 test:
     uv run pytest --cov=utilities --cov-report=term-missing --cov-report=xml
 
+coverage:
+    uv run pytest --cov=utilities --cov-report=term-missing --cov-report=xml
+
 contract-check:
     uv run python scripts/check-contract.py
+
+public-boundary-check:
+    uv run python scripts/check_public_boundary.py
+
+automation-check:
+    uv run python scripts/check_automation.py
 
 build:
     uv build --out-dir dist --clear
@@ -54,6 +63,10 @@ bump:
 
 release-dry-run: check
     bash scripts/release-dry-run.sh
+
+# Create private backup and sanitized mirror evidence only; never change a remote.
+history-rehearsal source-repository output-directory:
+    PLANNING_ARCHIVE_REPO="${PLANNING_ARCHIVE_REPO}" bash scripts/rehearse-history-sanitization.sh "{{source-repository}}" "{{output-directory}}"
 
 check-errors *args:
     uv run groovemap-check-errors {{args}}

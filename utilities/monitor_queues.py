@@ -41,7 +41,7 @@ def monitor_queues(interval: int = 5) -> None:
             # (RequestException); an empty list is a successful 200 response from a
             # broker with no queues declared yet (e.g. right after `just up`, before
             # the extractor/consumers connect) and must not be conflated with a
-            # connectivity error (discogsography-gpai).
+            # connectivity error. This distinction is regression-tested.
             if queues is None:
                 print("Failed to fetch queue data")
                 time.sleep(interval)

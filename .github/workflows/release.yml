@@ -1,24 +1,24 @@
-name: Release validation
+name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags: ["v*"]
 
 permissions:
+  attestations: write
   contents: read
+  id-token: write
 
 jobs:
-  build:
-    runs-on: macos-15
-    steps:
-      - name: Check out tagged source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Set up pinned repository tools
-        uses: groovemap-music/.github/.github/actions/setup-tools@main
-      - name: Build and validate without publishing
-        run: |
-          just setup
-          just release-dry-run
+  release:
+    uses: groovemap-music/automation/.github/workflows/reusable-release.yml@7db8b4c535c79329e3821e32177932b4f9059253
+    with:
+      runner: ubuntu-24.04
+      repository-name: operations-toolkit
+      setup-command: just setup
+      check-command: just check
+      release-command: just release-dry-run
+      artifact-path: |
+        dist/*.whl
+        dist/*.tar.gz
+        dist/provenance.json
