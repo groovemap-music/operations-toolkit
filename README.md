@@ -31,8 +31,9 @@ just check
 ```
 
 Useful focused commands are `just test`, `just contract-check`,
-`just public-boundary-check`, and `just build`. Tests use synthetic responses and do not
-contact a live deployment.
+`just public-boundary-check`, `just build`, `just audit`, and `just release-dry-run`. Tests use
+synthetic responses and do not contact a live deployment. The release dry-run builds checksums,
+an SBOM, third-party notices, and exact-source provenance without publishing anything.
 
 ## Safe configuration
 
