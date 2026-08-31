@@ -24,7 +24,7 @@ def get_docker_stats() -> list[dict[str, Any]]:
         output = result.stdout.strip()
         containers = json.loads(output) if output.startswith("[") else [json.loads(line) for line in output.split("\n") if line]
         return containers
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         return []
 
 
@@ -57,7 +57,7 @@ def get_service_logs(service: str, lines: int = 20) -> str:
             timeout=60,
         )
         return result.stdout
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         return ""
 
 
