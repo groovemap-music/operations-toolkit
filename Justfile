@@ -64,6 +64,10 @@ bump:
 release-dry-run: check
     bash scripts/release-dry-run.sh
 
+# Create private backup and sanitized mirror evidence only; never change a remote.
+history-rehearsal source-repository output-directory:
+    PLANNING_ARCHIVE_REPO="${PLANNING_ARCHIVE_REPO}" bash scripts/rehearse-history-sanitization.sh "{{source-repository}}" "{{output-directory}}"
+
 check-errors *args:
     uv run groovemap-check-errors {{args}}
 

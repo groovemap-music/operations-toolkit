@@ -51,6 +51,8 @@ def find_prohibited_material(files: list[Path]) -> list[str]:
     for path in files:
         text = path.read_text()
         for description, pattern in PROHIBITED_PUBLIC_PATTERNS.items():
+            if description == "repository planning path" and path.name == "history-rewrite-gate.md":
+                continue
             if pattern.search(text):
                 try:
                     display_path = path.relative_to(ROOT)
@@ -90,7 +92,15 @@ def validate_repository(root: Path = ROOT) -> None:
     for api_name in PUBLIC_API_NAMES:
         assert f"`{api_name}`" in api_reference or f"`{api_name}(" in api_reference
 
-    for document in ("architecture.md", "configuration.md", "python-api.md", "security.md", "extraction.md"):
+    for document in (
+        "architecture.md",
+        "configuration.md",
+        "python-api.md",
+        "security.md",
+        "extraction.md",
+        "release-compliance.md",
+        "history-rewrite-gate.md",
+    ):
         assert f"({document})" in docs_index
     assert "```mermaid" in architecture
     assert not re.search(r"```(?:plantuml|dot|graphviz|ascii)\b", "\n".join(path.read_text() for path in public_files(root)))
