@@ -61,19 +61,71 @@ def get_message_from_queue(
 # MusicBrainz messages carry "name" for every type (parse_mb_release_line emits
 # "name": v["title"]) and always set "sha256" to the empty string rather than
 # omitting it. Keep these distinctions covered as a wire-shape regression.
+#
+# "media" is the additive canonical media block both producers attach to
+# "releases" events (ADR 0007: /design/docs/adr/0007-canonical-media-taxonomy.md,
+# shape: /design/taxonomy/media/v1/media-block.schema.json). MusicBrainz also
+# carries "media_raw", the raw {format, format_id, position, title, track_count}
+# medium list its producer keeps alongside the mapped block.
 _DISCOGS_FIELD_SPECS: dict[str, tuple[list[str], list[str]]] = {
     "masters": (["id", "title", "sha256"], ["artists", "genres", "styles", "year"]),
     "artists": (["id", "name", "sha256"], ["members", "groups", "aliases"]),
     "labels": (["id", "name", "sha256"], ["parentLabel", "sublabels"]),
-    "releases": (["id", "title", "sha256"], ["artists", "labels", "master_id", "genres", "styles"]),
+    "releases": (["id", "title", "sha256"], ["artists", "labels", "master_id", "genres", "styles", "media"]),
 }
 
 _MUSICBRAINZ_FIELD_SPECS: dict[str, tuple[list[str], list[str]]] = {
     "artists": (["id", "name", "sha256"], ["disambiguation", "external_links"]),
     "labels": (["id", "name", "sha256"], ["disambiguation", "external_links"]),
-    "releases": (["id", "name", "sha256"], ["disambiguation", "barcode", "status", "release_group_mbid", "external_links"]),
+    "releases": (
+        ["id", "name", "sha256"],
+        ["disambiguation", "barcode", "status", "release_group_mbid", "external_links", "media", "media_raw"],
+    ),
     "release-groups": (["id", "name", "sha256"], ["mb_type", "secondary_types", "first_release_date", "disambiguation", "external_links"]),
 }
+
+
+def _media_shape_issues(media: Any) -> list[str]:
+    """Return a description of every way an optional `media` block deviates from
+    the ADR 0007 canonical shape.
+
+    This is a lightweight operator-triage check, not full JSON Schema
+    validation against media-block.schema.json — it confirms the block is an
+    object carrying a `families` list, an `items` list, a string
+    `taxonomy_version`, and an `unmapped` object with `formats`/`descriptions`
+    lists, so a malformed block is obvious at a glance instead of silently
+    printing as "media: dict with N keys"."""
+    if not isinstance(media, dict):
+        return [f"media: expected object, got {type(media).__name__}"]
+
+    issues: list[str] = []
+    if not isinstance(media.get("families"), list):
+        issues.append("media.families: expected list")
+    if not isinstance(media.get("items"), list):
+        issues.append("media.items: expected list")
+    if not isinstance(media.get("taxonomy_version"), str):
+        issues.append("media.taxonomy_version: expected string")
+
+    unmapped = media.get("unmapped")
+    if not isinstance(unmapped, dict):
+        issues.append("media.unmapped: expected object")
+    else:
+        if not isinstance(unmapped.get("formats"), list):
+            issues.append("media.unmapped.formats: expected list")
+        if not isinstance(unmapped.get("descriptions"), list):
+            issues.append("media.unmapped.descriptions: expected list")
+
+    return issues
+
+
+def _media_raw_shape_issues(media_raw: Any) -> list[str]:
+    """Return a description of every way an optional MusicBrainz `media_raw`
+    list deviates from its {format, format_id, position, title, track_count}
+    per-medium shape (a plain list of objects — the raw pre-taxonomy medium
+    entries the MusicBrainz producer keeps alongside the mapped `media` block)."""
+    if not isinstance(media_raw, list):
+        return [f"media_raw: expected list, got {type(media_raw).__name__}"]
+    return [f"media_raw[{i}]: expected object, got {type(entry).__name__}" for i, entry in enumerate(media_raw) if not isinstance(entry, dict)]
 
 
 def analyze_message(message: dict[str, Any] | None, message_type: str, source: str) -> None:
@@ -138,6 +190,12 @@ def analyze_message(message: dict[str, Any] | None, message_type: str, source: s
                         issues.append(f"Artist {i} missing 'id' field")
             elif isinstance(artist_list, dict) and "id" not in artist_list:
                 issues.append("Single artist missing 'id' field")
+
+    if "media" in message:
+        issues.extend(_media_shape_issues(message["media"]))
+
+    if "media_raw" in message:
+        issues.extend(_media_raw_shape_issues(message["media_raw"]))
 
     if issues:
         for issue in issues:
