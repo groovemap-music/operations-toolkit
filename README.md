@@ -49,10 +49,11 @@ issues.
 
 ## Repository boundary
 
-This repository owns the six CLIs, generated catalog-event naming bindings, and the
+This repository owns the six CLIs, the local catalog-event naming adapter, and the
 secret-file lookup helper. Deployment topology and operator procedures belong in private
-infrastructure repositories. Producer event schemas belong to `catalog-ingestion`; this
-repository consumes the promoted contract in `contracts/catalog-events/v1/`.
+infrastructure repositories. Producer event schemas belong to `discogs-ingestion` and
+`musicbrainz-ingestion`; this repository consumes both promoted contracts in
+`contracts/catalog-events/v1/discogs/` and `contracts/catalog-events/v1/musicbrainz/`.
 
 See the [documentation index](docs/README.md) for architecture, configuration, security, and
 source-history guidance.

@@ -28,7 +28,7 @@ coverage:
     uv run pytest --cov=utilities --cov-report=term-missing --cov-report=xml
 
 contract-check:
-    uv run python scripts/check-contract.py
+    uv run python scripts/check-contracts.py
 
 public-boundary-check:
     uv run python scripts/check_public_boundary.py

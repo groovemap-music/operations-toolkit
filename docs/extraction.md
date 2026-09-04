@@ -4,10 +4,13 @@
 and test history preserved. The extraction retained the utility package, its tests, and the
 license applicable at the time, then established this independently versioned repository.
 
-The current repository removes monorepo-relative imports and obtains queue vocabulary from a
-promoted `catalog-ingestion` contract. The generated binding records its producer revision and
-content digest under `contracts/catalog-events/v1/`; `just contract-check` verifies that the
-checked-in Python binding remains byte-for-byte consistent with that contract.
+The current repository removes monorepo-relative imports and obtains queue vocabulary from
+promoted producer contracts. `groovemap.catalog-events/v1` is produced independently by
+`discogs-ingestion` and `musicbrainz-ingestion`, so each producer's contract and generated
+Python binding is promoted byte-for-byte into `contracts/catalog-events/v1/discogs/` and
+`contracts/catalog-events/v1/musicbrainz/`, with the producer revision and content digests
+recorded in that subdirectory's `source.json`. `just contract-check` verifies both promotions
+against their recorded digests.
 
 No source repository was rewritten or deleted as part of the extraction. Workstation paths,
 migration commands, deployment topology, and private operational procedures are intentionally
