@@ -165,6 +165,153 @@ def test_analyze_discogs_release_still_requires_title(capsys) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# analyze_message — media block (ADR 0007)
+# --------------------------------------------------------------------------- #
+_WELL_FORMED_MEDIA = {
+    "taxonomy_version": "1",
+    "items": [
+        {
+            "family": "vinyl",
+            "medium": "vinyl_12",
+            "qty": 1,
+            "size_inches": 12,
+            "speed_rpm": None,
+            "channels": None,
+            "codec": None,
+            "variants": [],
+            "appearance": [],
+            "position": None,
+            "track_count": None,
+            "source": {"provider": "discogs", "name": "Vinyl", "descriptions": ["LP", "Album"], "text": None},
+        }
+    ],
+    "families": ["vinyl"],
+    "release_kind": "album",
+    "traits": [],
+    "edition": [],
+    "packaging": None,
+    "container": None,
+    "flags": [],
+    "unmapped": {"formats": [], "descriptions": []},
+}
+
+
+def test_analyze_discogs_release_media_absent(capsys) -> None:
+    message = {"id": "1", "title": "t", "sha256": "s"}
+    debug_message.analyze_message(message, "releases", "discogs")
+    out = capsys.readouterr().out
+    assert "- media: not present" in out
+    assert "No obvious issues detected" in out
+
+
+def test_analyze_discogs_release_media_present_well_formed(capsys) -> None:
+    message = {"id": "1", "title": "t", "sha256": "s", "media": _WELL_FORMED_MEDIA}
+    debug_message.analyze_message(message, "releases", "discogs")
+    out = capsys.readouterr().out
+    assert "✓ media: dict" in out
+    assert "No obvious issues detected" in out
+
+
+def test_analyze_discogs_release_media_malformed_not_object(capsys) -> None:
+    message = {"id": "1", "title": "t", "sha256": "s", "media": "not-an-object"}
+    debug_message.analyze_message(message, "releases", "discogs")
+    out = capsys.readouterr().out
+    assert "media: expected object, got str" in out
+
+
+def test_analyze_discogs_release_media_malformed_missing_lists(capsys) -> None:
+    message = {"id": "1", "title": "t", "sha256": "s", "media": {"taxonomy_version": "1"}}
+    debug_message.analyze_message(message, "releases", "discogs")
+    out = capsys.readouterr().out
+    assert "media.families: expected list" in out
+    assert "media.items: expected list" in out
+    assert "media.unmapped: expected object" in out
+
+
+def test_analyze_musicbrainz_release_media_absent(capsys) -> None:
+    message = {"id": "mbid-1", "name": "n", "sha256": ""}
+    debug_message.analyze_message(message, "releases", "musicbrainz")
+    out = capsys.readouterr().out
+    assert "- media: not present" in out
+    assert "- media_raw: not present" in out
+    assert "No obvious issues detected" in out
+
+
+def test_analyze_musicbrainz_release_media_present_well_formed(capsys) -> None:
+    mb_media = dict(_WELL_FORMED_MEDIA)
+    mb_media["release_kind"] = None
+    mb_media["items"] = [
+        {
+            **_WELL_FORMED_MEDIA["items"][0],
+            "position": 1,
+            "track_count": 9,
+            "source": {"provider": "musicbrainz", "name": '12" Vinyl', "descriptions": [], "text": None},
+        }
+    ]
+    message = {
+        "id": "mbid-1",
+        "name": "n",
+        "sha256": "",
+        "media": mb_media,
+        "media_raw": [{"format": '12" Vinyl', "format_id": None, "position": 1, "title": "", "track_count": 9}],
+    }
+    debug_message.analyze_message(message, "releases", "musicbrainz")
+    out = capsys.readouterr().out
+    assert "✓ media: dict" in out
+    assert "✓ media_raw: list" in out
+    assert "No obvious issues detected" in out
+
+
+def test_analyze_discogs_release_media_malformed_taxonomy_version(capsys) -> None:
+    media = dict(_WELL_FORMED_MEDIA)
+    media["taxonomy_version"] = 1  # must be a string per ADR 0007
+    message = {"id": "1", "title": "t", "sha256": "s", "media": media}
+    debug_message.analyze_message(message, "releases", "discogs")
+    out = capsys.readouterr().out
+    assert "media.taxonomy_version: expected string" in out
+
+
+def test_analyze_discogs_release_media_malformed_unmapped_descriptions(capsys) -> None:
+    media = dict(_WELL_FORMED_MEDIA)
+    media["unmapped"] = {"formats": [], "descriptions": "oops"}
+    message = {"id": "1", "title": "t", "sha256": "s", "media": media}
+    debug_message.analyze_message(message, "releases", "discogs")
+    out = capsys.readouterr().out
+    assert "media.unmapped.descriptions: expected list" in out
+
+
+def test_analyze_musicbrainz_release_media_malformed_unmapped_lists(capsys) -> None:
+    message = {
+        "id": "mbid-1",
+        "name": "n",
+        "sha256": "",
+        "media": {
+            "taxonomy_version": "1",
+            "items": [],
+            "families": [],
+            "unmapped": {"formats": "oops", "descriptions": []},
+        },
+    }
+    debug_message.analyze_message(message, "releases", "musicbrainz")
+    out = capsys.readouterr().out
+    assert "media.unmapped.formats: expected list" in out
+
+
+def test_analyze_musicbrainz_release_media_raw_malformed(capsys) -> None:
+    message = {"id": "mbid-1", "name": "n", "sha256": "", "media_raw": "oops"}
+    debug_message.analyze_message(message, "releases", "musicbrainz")
+    out = capsys.readouterr().out
+    assert "media_raw: expected list, got str" in out
+
+
+def test_analyze_musicbrainz_release_media_raw_entry_malformed(capsys) -> None:
+    message = {"id": "mbid-1", "name": "n", "sha256": "", "media_raw": [{"format": "CD"}, "not-an-object"]}
+    debug_message.analyze_message(message, "releases", "musicbrainz")
+    out = capsys.readouterr().out
+    assert "media_raw[1]: expected object, got str" in out
+
+
+# --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
 def test_main_no_args_exits(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

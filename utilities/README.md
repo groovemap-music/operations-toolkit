@@ -63,6 +63,22 @@ delivery with `basic_nack`, and then reports required/optional field shape.
 uv run groovemap-debug-message releases graphinator
 ```
 
+### Media block on `releases` messages
+
+Both producers attach the additive canonical `media` object to `releases` events (ADR 0007:
+canonical media taxonomy). The command lists `media` as an optional field for both Discogs and
+MusicBrainz `releases`, and MusicBrainz `releases` also carry `media_raw`, the producer's raw
+`{format, format_id, position, title, track_count}` medium list. When `media` or `media_raw` is
+present, the command checks its shape — an object with `families`, `items`, and
+`taxonomy_version`, and an `unmapped` object with `formats`/`descriptions` — and reports a
+specific issue (for example `media.families: expected list`) instead of silently printing a
+malformed block as an opaque dict. Absent `media`/`media_raw` is reported as `not present`, not
+as an error: the field is optional.
+
+Example release payloads carrying `media` (Discogs) and `media`/`media_raw` (MusicBrainz) are in
+[`examples/discogs-release-with-media.json`](../examples/discogs-release-with-media.json) and
+[`examples/musicbrainz-release-with-media.json`](../examples/musicbrainz-release-with-media.json).
+
 ## `groovemap-healthcheck <process-name>`
 
 Scans the local process table for a command-line argument containing the requested name. The
