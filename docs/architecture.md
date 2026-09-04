@@ -1,15 +1,17 @@
 # Architecture
 
 The toolkit is a thin observational layer over standard deployment interfaces. Command modules
-format observations for humans; the generated catalog contract owns queue naming; the secret
-helper keeps credential values out of arguments and logs.
+format observations for humans; the two source-owned producer contracts own queue naming, which
+a hand-authored local adapter composes into one import; the secret helper keeps credential
+values out of arguments and logs.
 
 ```mermaid
 flowchart LR
     Operator[Operator] --> CLI[operations-toolkit CLIs]
     Config[Synthetic or private runtime configuration] --> CLI
-    Contract[catalog-ingestion event contract] --> Binding[Generated queue-name binding]
-    Binding --> CLI
+    DiscogsContract[discogs-ingestion event contract] --> Adapter[Local queue-name adapter]
+    MusicBrainzContract[musicbrainz-ingestion event contract] --> Adapter
+    Adapter --> CLI
     CLI -->|read logs and status| Docker[Docker Compose]
     CLI -->|read queue statistics or peek/requeue| RabbitMQ[RabbitMQ]
     CLI -->|read aggregate counts| Neo4j[Neo4j]
@@ -22,7 +24,7 @@ flowchart LR
 This repository owns:
 
 - six console commands and their presentation behavior;
-- generated catalog-event queue naming helpers;
+- the local adapter composing both promoted producers' catalog-event queue naming;
 - the environment/secret-file lookup helper;
 - synthetic examples and credential-free tests.
 

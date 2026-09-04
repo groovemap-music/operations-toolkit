@@ -4,8 +4,9 @@ The supported reusable API is intentionally smaller than the CLI implementation 
 
 ## Catalog-event naming
 
-`utilities.catalog_contract` is generated from the promoted producer contract. Supported
-functions are:
+`utilities.catalog_contract` is the toolkit's adapter over the two promoted, source-owned
+producer contracts in `contracts/catalog-events/v1/discogs/` and
+`contracts/catalog-events/v1/musicbrainz/`. Supported functions are:
 
 - `entity_types(source)` — return valid entities for `discogs` or `musicbrainz`.
 - `exchange_prefix(source)` — return the configured exchange namespace.
@@ -25,8 +26,9 @@ from utilities.catalog_contract import queue_name
 synthetic_queue = queue_name("graphinator", "releases")
 ```
 
-Do not edit the generated module directly. Promote a reviewed producer contract and run
-`just contract-check`.
+Promote a reviewed producer contract byte-for-byte and run `just contract-check`. The
+adapter is hand-authored, so any edit to it must leave every frozen AMQP identifier in
+`tests/test_catalog_contract_frozen_identifiers.py` unchanged.
 
 ## Secret lookup
 
