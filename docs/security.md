@@ -1,9 +1,9 @@
 # Security and publication boundary
 
-The public repository contains source code, synthetic configuration, generated contract
-bindings, and tests. It must remain free of credential values, live non-public network
-locations, identifiable customer records, operational event evidence, and private response
-procedures.
+The public repository contains source code, synthetic configuration, the promoted producer
+contracts and their generated bindings, and tests. It must remain free of credential values,
+live non-public network locations, identifiable customer records, operational event evidence,
+and private response procedures.
 
 ## Access
 
