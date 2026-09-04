@@ -62,7 +62,9 @@ packages = ["utilities"]
 exclude-newer = "2 days"
 
 [tool.ruff]
-extend-exclude = ["utilities/catalog_contract.py"]
+# Promoted producer artifacts are byte-for-byte copies pinned by
+# contracts/catalog-events/v1/*/source.json; they are never reformatted here.
+extend-exclude = ["contracts"]
 line-length = 150
 target-version = "py314"
 
