@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-AUTOMATION_REVISION = "7db8b4c535c79329e3821e32177932b4f9059253"
+AUTOMATION_REVISION = "833cb464507678c38ab78bd4718ce697399463e9"
 
 
 def require_markers(text: str, markers: set[str], subject: str) -> None:
