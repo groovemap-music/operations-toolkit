@@ -3,7 +3,7 @@
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, cast
 
 import pika
 
@@ -16,6 +16,32 @@ from utilities.catalog_contract import (
 from utilities.secrets import get_secret
 
 
+def _peek_message_body(
+    queue_name: str,
+    host: str,
+    username: str,
+    password: str,
+) -> bytes | None:
+    """Fetch one body and requeue its delivery before returning it."""
+    connection = None
+    try:
+        credentials = pika.PlainCredentials(username, password)
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=host, credentials=credentials, socket_timeout=10, blocked_connection_timeout=30)
+        )
+        channel = connection.channel()
+
+        method, _properties, body = channel.basic_get(queue=queue_name, auto_ack=False)
+        if not method:
+            return None
+        # Requeue before interpretation so malformed JSON cannot strand a delivery.
+        channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        return cast("bytes", body)
+    finally:
+        if connection and not connection.is_closed:
+            connection.close()
+
+
 def get_message_from_queue(
     queue_name: str,
     host: str = "localhost",
@@ -25,34 +51,15 @@ def get_message_from_queue(
     """Peek at a message from the queue without consuming it."""
     username = username or os.environ.get("RABBITMQ_USERNAME", "groovemap")
     password = password or get_secret("RABBITMQ_PASSWORD", "")
-    connection = None
     try:
-        # Connect to RabbitMQ
-        credentials = pika.PlainCredentials(username, password)
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=host, credentials=credentials, socket_timeout=10, blocked_connection_timeout=30)
-        )
-        channel = connection.channel()
-
-        # Get a single message
-        method, _properties, body = channel.basic_get(queue=queue_name, auto_ack=False)
-
-        if method:
-            # Reject the message to put it back in the queue before parsing
-            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-
-            # Parse the message (safe to fail now — message is already requeued)
-            message: dict[str, Any] = json.loads(body)
-            return message
-        else:
+        body = _peek_message_body(queue_name, host, username, password)
+        if body is None:
             return None
-
+        message: dict[str, Any] = json.loads(body)
+        return message
     except Exception as e:
         print(f"Error: {e}")
         return None
-    finally:
-        if connection and not connection.is_closed:
-            connection.close()
 
 
 # Field specs are keyed on (source, message_type) because the type names
@@ -142,11 +149,9 @@ def analyze_message(message: dict[str, Any] | None, message_type: str, source: s
         print("No message available in queue")
         return
 
-    # Basic info
     print(f"Message ID: {message.get('id', 'MISSING')}")
     print(f"SHA256: {str(message.get('sha256', 'MISSING'))[:16]}...")
 
-    # Check for required fields based on (source, type)
     field_specs = _MUSICBRAINZ_FIELD_SPECS if source == "musicbrainz" else _DISCOGS_FIELD_SPECS
     required_fields, optional_fields = field_specs.get(message_type, (["id", "sha256"], []))
 
@@ -172,14 +177,12 @@ def analyze_message(message: dict[str, Any] | None, message_type: str, source: s
         else:
             print(f"  - {field}: not present")
 
-    # Check for potential issues
     print("\n⚠️  Potential Issues:")
     issues = []
 
     if missing_required:
         issues.append(f"Missing required fields: {', '.join(missing_required)}")
 
-    # Check for nested structure issues
     if message_type == "masters" and "artists" in message:
         artists = message["artists"]
         if isinstance(artists, dict) and "artist" in artists:
@@ -203,7 +206,6 @@ def analyze_message(message: dict[str, Any] | None, message_type: str, source: s
     else:
         print("  No obvious issues detected")
 
-    # Show full message structure
     print("\n📄 Full Message Structure:")
     formatted = json.dumps(message, indent=2)
     print(formatted[:1000] + "..." if len(formatted) > 1000 else formatted)
@@ -257,10 +259,7 @@ def main() -> None:
 
     print(f"🔍 Debugging Queue: {queue_name}")
 
-    # Get a message from the queue
     message = get_message_from_queue(queue_name)
-
-    # Analyze the message
     analyze_message(message, queue_type, source)
 
 

@@ -7,6 +7,7 @@ from typing import Any
 
 import requests
 
+from utilities._transport import docker_compose_output, rabbitmq_queues
 from utilities.catalog_contract import DISCOGS_EXCHANGE_PREFIX, MUSICBRAINZ_EXCHANGE_PREFIX
 from utilities.secrets import get_secret
 
@@ -14,14 +15,7 @@ from utilities.secrets import get_secret
 def get_docker_stats() -> list[dict[str, Any]]:
     """Get Docker container statistics."""
     try:
-        result = subprocess.run(  # nosec B603 B607
-            ["docker", "compose", "ps", "--format", "json"],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=60,
-        )
-        output = result.stdout.strip()
+        output = docker_compose_output(subprocess.run, "ps", "--format", "json").strip()
         containers = json.loads(output) if output.startswith("[") else [json.loads(line) for line in output.split("\n") if line]
         return containers
     except subprocess.CalledProcessError, subprocess.TimeoutExpired:
@@ -38,10 +32,7 @@ def get_queue_stats(
     username = username or os.environ.get("RABBITMQ_USERNAME", "groovemap")
     password = password or get_secret("RABBITMQ_PASSWORD", "")
     try:
-        response = requests.get(f"{base_url}/api/queues", auth=(username, password), timeout=10)
-        response.raise_for_status()
-        data: list[dict[str, Any]] = response.json()
-        return data
+        return rabbitmq_queues(requests.get, base_url, username, password)
     except requests.RequestException:
         return None
 
@@ -49,14 +40,7 @@ def get_queue_stats(
 def get_service_logs(service: str, lines: int = 20) -> str:
     """Get recent logs from a service."""
     try:
-        result = subprocess.run(  # noqa: S603  # nosec B603 B607
-            ["docker", "compose", "logs", service, f"--tail={lines}"],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=60,
-        )
-        return result.stdout
+        return docker_compose_output(subprocess.run, "logs", service, f"--tail={lines}")
     except subprocess.CalledProcessError, subprocess.TimeoutExpired:
         return ""
 
@@ -126,7 +110,6 @@ def monitor_system() -> None:
     print("System Monitor for GrooveMap")
     print("=" * 80)
 
-    # Check Docker containers
     print("\n📦 Docker Container Status:")
     print("-" * 40)
     containers = get_docker_stats()
@@ -139,7 +122,6 @@ def monitor_system() -> None:
     else:
         print("  Unable to fetch container status")
 
-    # Check RabbitMQ queues
     print("\n📬 RabbitMQ Queue Status:")
     print("-" * 40)
     queues = get_queue_stats()
@@ -166,7 +148,6 @@ def monitor_system() -> None:
                 print(f"  {name:<30} Ready: {ready:<8} Unacked: {unacked:<8} Total: {total}")
         print(f"\n  Total messages: {total_messages}")
 
-    # Check Neo4j status
     print("\n🔷 Neo4j Database Status:")
     print("-" * 40)
     neo4j_status = check_neo4j_status()
@@ -175,7 +156,6 @@ def monitor_system() -> None:
     else:
         print("  Unable to connect to Neo4j")
 
-    # Check PostgreSQL status
     print("\n🐘 PostgreSQL Database Status:")
     print("-" * 40)
     postgres_status = check_postgres_status()
@@ -184,7 +164,6 @@ def monitor_system() -> None:
     else:
         print("  Unable to connect to PostgreSQL")
 
-    # Check for recent errors in services
     print("\n⚠️  Recent Errors (last 50 lines):")
     print("-" * 40)
     services = ["extractor-discogs", "extractor-musicbrainz", "graphinator", "tableinator", "brainzgraphinator", "brainztableinator"]
