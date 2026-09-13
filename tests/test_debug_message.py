@@ -39,6 +39,17 @@ def test_get_message_returns_and_requeues() -> None:
     conn.close.assert_called_once()
 
 
+def test_get_message_requeues_before_reporting_malformed_json(capsys) -> None:
+    conn = _fake_connection(b"not-json")
+    with patch.object(debug_message.pika, "BlockingConnection", return_value=conn):
+        assert debug_message.get_message_from_queue("q", username="u", password="p") is None  # noqa: S106
+
+    channel = conn.channel.return_value
+    channel.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
+    conn.close.assert_called_once()
+    assert "Error:" in capsys.readouterr().out
+
+
 def test_get_message_empty_queue() -> None:
     conn = _fake_connection(None)
     with patch.object(debug_message.pika, "BlockingConnection", return_value=conn):

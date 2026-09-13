@@ -4,23 +4,15 @@ import re
 import subprocess  # nosec B404
 import sys
 
+from utilities._transport import docker_compose_output
+
 
 def check_service_errors(service: str, time_window: int = 60) -> list[str]:
     """Check for errors in service logs within the specified time window (minutes)."""
     try:
-        # Get logs for the specified time window
-        result = subprocess.run(  # noqa: S603  # nosec B603 B607
-            ["docker", "compose", "logs", service, f"--since={time_window}m"],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=60,
-        )
-
-        logs = result.stdout
+        logs = docker_compose_output(subprocess.run, "logs", service, f"--since={time_window}m")
         errors = []
 
-        # Pattern to match error lines
         error_patterns = [
             r"ERROR.*Failed to process.*message.*'id'",
             r"Failed to process.*",
@@ -57,14 +49,11 @@ def main() -> None:
         errors = check_service_errors(service, time_window)
 
         if errors:
-            # Group similar errors
             error_counts: dict[str, int] = {}
             for error in errors:
-                # Extract the core error message
                 if "Failed to process" in error and "'id'" in error:
                     key = "Failed to process message: 'id'"
                 elif "ERROR" in error:
-                    # Extract the error type
                     match = re.search(r"ERROR.*?-\s*(.*?)$", error)
                     if match:
                         key = match.group(1)[:50] + "..." if len(match.group(1)) > 50 else match.group(1)
@@ -75,7 +64,6 @@ def main() -> None:
 
                 error_counts[key] = error_counts.get(key, 0) + 1
 
-            # Display error summary
             for error_msg, count in sorted(error_counts.items(), key=lambda x: x[1], reverse=True):
                 print(f"  • {error_msg} (x{count})")
                 total_errors += count

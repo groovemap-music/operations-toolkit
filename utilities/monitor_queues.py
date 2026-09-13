@@ -7,6 +7,7 @@ from typing import Any
 
 import requests
 
+from utilities._transport import rabbitmq_queues
 from utilities.secrets import get_secret
 
 
@@ -20,10 +21,7 @@ def get_queue_stats(
     username = username or os.environ.get("RABBITMQ_USERNAME", "groovemap")
     password = password or get_secret("RABBITMQ_PASSWORD", "")
     try:
-        response = requests.get(f"{base_url}/api/queues", auth=(username, password), timeout=10)
-        response.raise_for_status()
-        data: list[dict[str, Any]] = response.json()
-        return data
+        return rabbitmq_queues(requests.get, base_url, username, password)
     except requests.RequestException as e:
         print(f"Error connecting to RabbitMQ: {e}")
         return None
@@ -47,7 +45,6 @@ def monitor_queues(interval: int = 5) -> None:
                 time.sleep(interval)
                 continue
 
-            # Clear screen
             print("\033[2J\033[H")
             print(f"RabbitMQ Queue Monitor - {time.strftime('%Y-%m-%d %H:%M:%S')}")
             print("-" * 80)
@@ -68,7 +65,6 @@ def monitor_queues(interval: int = 5) -> None:
                     total = queue.get("messages", 0)
                     total_messages += total
 
-                    # Highlight queues with unacked messages
                     if unacked > 0:
                         print(f"\033[93m{name:<50} {ready:<10} {unacked:<10} {total:<10}\033[0m")
                     else:
