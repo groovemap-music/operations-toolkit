@@ -5,6 +5,7 @@ import os
 
 import requests
 
+from utilities._transport import rabbitmq_queues
 from utilities.secrets import get_secret
 
 
@@ -16,11 +17,8 @@ def check_rabbitmq_queues() -> None:
     password = get_secret("RABBITMQ_PASSWORD", "")
 
     try:
-        response = requests.get(url, auth=(username, password), timeout=10)
-        response.raise_for_status()
-        data = response.json()
+        data = rabbitmq_queues(requests.get, base_url, username, password)
 
-        # Filter for all consumer queues (graphinator, tableinator, brainzgraphinator, brainztableinator)
         consumer_keywords = ("graphinator", "tableinator")
         consumer_queues = [q for q in data if any(kw in q.get("name", "") for kw in consumer_keywords)]
 
@@ -46,7 +44,6 @@ def check_rabbitmq_queues() -> None:
             print(f"  Unacked Messages: {messages_unacked}")
             print(f"  Active Consumers: {consumers}")
 
-            # Message stats
             message_stats = queue.get("message_stats", {})
             if message_stats:
                 ack_rate = message_stats.get("ack_details", {}).get("rate", 0)
@@ -54,7 +51,6 @@ def check_rabbitmq_queues() -> None:
                 print(f"  Ack Rate: {ack_rate:.2f} msg/s")
                 print(f"  Publish Rate: {publish_rate:.2f} msg/s")
 
-            # Consumer details
             if consumers > 0 and "consumer_details" in queue:
                 print("  Consumer Details:")
                 for consumer in queue.get("consumer_details", []):

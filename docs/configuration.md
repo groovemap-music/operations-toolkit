@@ -5,7 +5,7 @@ placeholder secret-file paths; this repository does not contain a deployable env
 
 | Variable | Used by | Default | Meaning |
 | --- | --- | --- | --- |
-| `RABBITMQ_URL` | queue checks and monitors | `http://localhost:15672` | RabbitMQ Management API base URL. |
+| `RABBITMQ_URL` | queue check, queue monitor, system monitor | `http://localhost:15672` | RabbitMQ Management API base URL. |
 | `RABBITMQ_USERNAME` | RabbitMQ tools | `groovemap` | Least-privileged monitoring account. |
 | `RABBITMQ_PASSWORD_FILE` | RabbitMQ tools | unset | File containing the password; preferred. |
 | `RABBITMQ_PASSWORD` | RabbitMQ tools | empty | Direct fallback when no file variable is set. |
@@ -17,9 +17,11 @@ placeholder secret-file paths; this repository does not contain a deployable env
 | `DISCOGS_EXCHANGE_PREFIX` | queue naming | `groovemap-discogs` | Discogs exchange/queue namespace. |
 | `MUSICBRAINZ_EXCHANGE_PREFIX` | queue naming | `groovemap-musicbrainz` | MusicBrainz exchange/queue namespace. |
 
-`groovemap-debug-message` connects to RabbitMQ on the local host through its CLI. Library callers
-can pass a synthetic or deployment-provided host to `get_message_from_queue`; this repository
-does not publish a live broker address.
+`groovemap-debug-message` does not read `RABBITMQ_URL`: its CLI connects to AMQP on
+`localhost` using Pika's default port. Library callers can pass a synthetic or
+deployment-provided host to `get_message_from_queue`; this repository does not publish a live
+broker address. Prefix overrides are read when the catalog adapter is imported, so set them
+before starting a command.
 
 ## Synthetic example
 
