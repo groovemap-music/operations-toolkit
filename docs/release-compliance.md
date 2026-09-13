@@ -3,8 +3,10 @@
 The repository gate is credential-free and does not contact a deployment. `just check` verifies
 formatting, linting, types, tests and coverage, the promoted event contract, the public-content
 boundary, immutable automation, package construction and installation, MIT metadata, complete
-Git and worktree secret scans, and version consistency. `just audit` adds the current
-network-backed Python vulnerability audit.
+Git and worktree secret scans, and version consistency. `just audit` is deliberately outside
+that credential-free gate because it adds the current network-backed Python vulnerability audit.
+The root [recipe reference](../README.md#development) distinguishes validation, local mutation,
+operator observation, and the stateful broker peek.
 
 `just release-dry-run` creates the wheel and source distribution plus SHA-256 checksums, a
 CycloneDX SBOM, third-party notices, and provenance containing the exact source revision. It does
