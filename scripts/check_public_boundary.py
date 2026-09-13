@@ -1,5 +1,6 @@
 """Validate the documentation and synthetic-data boundary of the public toolkit."""
 
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -83,6 +84,8 @@ def validate_repository(root: Path = ROOT) -> None:
     api_reference = (root / "docs/python-api.md").read_text()
     docs_index = (root / "docs/README.md").read_text()
     architecture = (root / "docs/architecture.md").read_text()
+    extraction = (root / "docs/extraction.md").read_text()
+    recipe_docs = "\n".join((root_readme, command_reference, (root / "docs/history-rewrite-gate.md").read_text()))
 
     with (root / "pyproject.toml").open("rb") as source:
         commands = set(tomllib.load(source)["project"]["scripts"])
@@ -91,6 +94,24 @@ def validate_repository(root: Path = ROOT) -> None:
         assert f"`{command}" in command_reference
     for api_name in PUBLIC_API_NAMES:
         assert f"`{api_name}`" in api_reference or f"`{api_name}(" in api_reference
+
+    justfile = (root / "Justfile").read_text()
+    recipes = set(re.findall(r"^([a-z][a-z0-9-]*)(?:\s[^:]*)?:", justfile, flags=re.MULTILINE)) - {"default", "set"}
+    for recipe in recipes:
+        assert f"`just {recipe}" in recipe_docs, f"undocumented Just recipe: {recipe}"
+
+    for source in ("discogs", "musicbrainz"):
+        source_record = json.loads((root / "contracts/catalog-events/v1" / source / "source.json").read_text())
+        assert source_record["producer_repository"] in extraction
+        assert source_record["producer_commit"] in extraction
+
+    for identifier in (
+        "groovemap-discogs-{entity}",
+        "groovemap-discogs-{consumer}-{entity}",
+        "groovemap-musicbrainz-{entity}",
+        "groovemap-musicbrainz-{consumer}-{entity}",
+    ):
+        assert f"`{identifier}`" in api_reference
 
     for document in (
         "architecture.md",
@@ -109,6 +130,12 @@ def validate_repository(root: Path = ROOT) -> None:
         path.read_text() for extension in ("*.json", "*.md", "*.py", "*.toml") for path in root.rglob(extension) if ".venv" not in path.parts
     )
     assert "discogs" + "ography" not in active_text.lower()
+    operator_docs = "\n".join(path.read_text() for path in public_files(root))
+    assert "groovemap-music/catalog-ingestion" not in operator_docs
+    assert "`catalog-ingestion`" not in operator_docs
+    assert "[catalog-ingestion]" not in operator_docs
+    assert "discogs-ingestion" in operator_docs
+    assert "musicbrainz-ingestion" in operator_docs
     assert "claude" + ".md" not in active_text.lower()
     assert "GrooveMap" in root_readme
     assert "operations-toolkit" in root_readme

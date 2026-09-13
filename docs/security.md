@@ -20,6 +20,15 @@ sensitive even when the command does not mutate the target. Review output locall
 as long as necessary, and sanitize any diagnostic shared outside the authorized operator group.
 Never attach raw command output to this public repository.
 
+## Command safety classes
+
+`groovemap-check-errors`, `groovemap-check-queues`, `groovemap-monitor-queues`,
+`groovemap-healthcheck`, and `groovemap-system-monitor` are observational. Their reads can still
+expose topology, counts, process arguments, and log excerpts. `groovemap-debug-message` is
+stateful: it gets one delivery and requeues it before parsing, retaining the body but potentially
+changing delivery order. None of the six commands purges a queue, acknowledges a delivery,
+changes a database, restarts a service, or edits deployment configuration.
+
 ## Repository checks
 
 `just public-boundary-check` verifies that every packaged CLI is documented, the public API is
