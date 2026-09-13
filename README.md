@@ -1,9 +1,11 @@
 # GrooveMap operations toolkit
 
-`operations-toolkit` packages credential-conscious, observational utilities for inspecting
-a GrooveMap deployment. The tools report queue activity, recent service errors, process
-presence, container health, and database statistics. They do not purge queues, modify
-databases, restart services, or publish deployment configuration.
+`operations-toolkit` packages credential-conscious, primarily observational utilities for
+inspecting a GrooveMap deployment. The tools report queue activity, recent service errors,
+process presence, container health, and database statistics. `groovemap-debug-message` is the
+narrow stateful exception: it gets and immediately requeues one delivery, which can affect
+delivery order. The tools do not purge queues, modify databases, restart services, or publish
+deployment configuration.
 
 ## Supported commands
 
