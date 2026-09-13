@@ -1,8 +1,9 @@
 # Operations toolkit command reference
 
 These six commands are the supported CLI surface of the GrooveMap `operations-toolkit`.
-They are observational, but their output can reflect live deployment or catalog data. Run
-them with least-privileged access and keep captured output out of public artifacts.
+Five are observational. `groovemap-debug-message` performs the documented get-and-requeue
+operation and can affect delivery ordering. Their output can reflect live deployment or catalog
+data, so run them with least-privileged access and keep captured output out of public artifacts.
 
 ## `groovemap-check-errors [minutes]`
 
@@ -110,6 +111,9 @@ uv run groovemap-system-monitor
 
 The same commands are exposed through `just check-errors`, `just check-queues`,
 `just monitor-queues`, `just debug-message`, `just healthcheck`, and `just system-monitor`.
+The recipes retain the command boundaries above: five are observational, while
+`just debug-message` performs the documented get-and-requeue operation and can affect delivery
+ordering.
 
 See the [public Python API](../docs/python-api.md), [configuration reference](../docs/configuration.md),
 and [security boundary](../docs/security.md) for the reusable and operational contracts.
