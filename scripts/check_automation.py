@@ -1,10 +1,12 @@
 """Validate the immutable, actor-independent GitHub automation callers."""
 
 from pathlib import Path
+from tomllib import loads
 
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTOMATION_REVISION = "833cb464507678c38ab78bd4718ce697399463e9"
+COVERAGE_FLOOR = 99.39
 
 
 def require_markers(text: str, markers: set[str], subject: str) -> None:
@@ -87,11 +89,34 @@ def validate_dependabot() -> None:
     )
 
 
+def validate_coverage_policy() -> None:
+    """Keep the local floor, measured package, and Codecov project gate aligned."""
+    project = loads((ROOT / "pyproject.toml").read_text())
+    coverage_run = project["tool"]["coverage"]["run"]
+    coverage_report = project["tool"]["coverage"]["report"]
+    assert coverage_run["source"] == ["utilities"], "every utility module must remain in the measured package"
+    assert coverage_run["omit"] == ["*/tests/*", "*/__init__.py"], "coverage omissions must stay limited to tests and package markers"
+    assert coverage_report["precision"] == 2
+    assert coverage_report["fail_under"] == COVERAGE_FLOOR
+
+    codecov = (ROOT / "codecov.yml").read_text()
+    require_markers(
+        codecov,
+        {
+            'target: "99.39%"',
+            'threshold: "0%"',
+            "round: down",
+        },
+        "Codecov policy",
+    )
+
+
 def validate_repository() -> None:
     """Validate all automation surfaces and reject retired bot workflows."""
     validate_ci()
     validate_release()
     validate_dependabot()
+    validate_coverage_policy()
     workflow_names = {path.name.lower() for path in (ROOT / ".github/workflows").iterdir() if path.is_file()}
     assert not any("renovate" in name or "claude" in name for name in workflow_names)
 

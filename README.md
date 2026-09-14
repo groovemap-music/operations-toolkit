@@ -51,6 +51,11 @@ maintenance recipes are:
 | `just release-dry-run` | Run `check`, then build checksums, an SBOM, notices, and exact-source provenance without publishing. |
 | `just history-rehearsal SOURCE OUTPUT` | Create private backup and sanitized-history evidence; never change a remote. |
 
+The repository-owned [coverage policy](docs/coverage-policy.md) records the measured utility
+baseline and the ratchet enforced by local checks, the required CI job, and Codecov. Pull
+requests from maintainers and Dependabot use the same actor-independent `required` job and
+therefore the same coverage floor.
+
 Running bare `just` lists those recipes plus the six explicit operator wrappers documented in
 the [command reference](utilities/README.md): `just check-errors`, `just check-queues`,
 `just monitor-queues`, `just healthcheck`, and `just system-monitor` are observational;
