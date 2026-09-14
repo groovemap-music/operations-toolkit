@@ -7,6 +7,7 @@
 - [Source-history provenance](extraction.md) — history-preserving extraction summary.
 - [Release compliance](release-compliance.md) — package, dependency, and publication evidence.
 - [History rewrite gate](history-rewrite-gate.md) — backed-up local rehearsal and later approval boundary.
+- [Coverage policy](coverage-policy.md) — measured utility baseline, enforcement, and ratchet rules.
 - [Command reference](../utilities/README.md) — all supported CLIs and their behavior.
 
 The root [README](../README.md) provides the project overview and development interface.
