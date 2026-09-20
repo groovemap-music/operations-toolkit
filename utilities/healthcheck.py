@@ -48,9 +48,9 @@ def main() -> None:
     process_name = sys.argv[1]
 
     if check_process(process_name):
-        sys.exit(0)  # Success
+        sys.exit(0)
     else:
-        sys.exit(1)  # Failure
+        sys.exit(1)
 
 
 if __name__ == "__main__":

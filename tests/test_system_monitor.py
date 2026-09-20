@@ -188,7 +188,7 @@ def test_monitor_system_all_unavailable(capsys) -> None:
     assert "Unable to fetch queue data" in out
     assert "Unable to connect to Neo4j" in out
     assert "Unable to connect to PostgreSQL" in out
-    assert "graphinator:" in out  # error section rendered
+    assert "graphinator:" in out
 
 
 def test_monitor_system_empty_queue_list_is_not_a_fetch_failure(capsys) -> None:
