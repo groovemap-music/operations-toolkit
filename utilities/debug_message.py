@@ -188,7 +188,7 @@ def analyze_message(message: dict[str, Any] | None, message_type: str, source: s
         if isinstance(artists, dict) and "artist" in artists:
             artist_list = artists["artist"]
             if isinstance(artist_list, list):
-                for i, artist in enumerate(artist_list[:3]):  # Check first 3
+                for i, artist in enumerate(artist_list[:3]):  # Validate only the first three artists.
                     if not isinstance(artist, dict) or "id" not in artist:
                         issues.append(f"Artist {i} missing 'id' field")
             elif isinstance(artist_list, dict) and "id" not in artist_list:
