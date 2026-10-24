@@ -1,76 +1,76 @@
 #!/usr/bin/env python3
 """Check RabbitMQ queue status for all consumer services."""
 
-import os
+import time
 
 import requests
 
-from utilities._transport import rabbitmq_queues
-from utilities.secrets import get_secret
+from utilities import queue_metrics
+
+
+def _format_rate(rate: float | None) -> str:
+    return "n/a" if rate is None else f"{rate:.2f} msg/s"
 
 
 def check_rabbitmq_queues() -> None:
     """Check the status of all consumer queues in RabbitMQ."""
-    base_url = os.environ.get("RABBITMQ_URL", "http://localhost:15672")
-    url = f"{base_url}/api/queues"
-    username = os.environ.get("RABBITMQ_USERNAME", "groovemap")
-    password = get_secret("RABBITMQ_PASSWORD", "")
+    base_url = queue_metrics.prometheus_url()
+    interval = queue_metrics.sample_interval()
 
     try:
-        data = rabbitmq_queues(requests.get, base_url, username, password)
+        first = queue_metrics.fetch_queue_metrics(base_url)
+        if not first:
+            print("No consumer queues found!")
+            return
 
-        consumer_keywords = ("graphinator", "tableinator")
-        consumer_queues = [q for q in data if any(kw in q.get("name", "") for kw in consumer_keywords)]
+        started = time.monotonic()
+        time.sleep(interval)
+        data = queue_metrics.fetch_queue_metrics(base_url)
+        rates = queue_metrics.queue_rates(first, data, time.monotonic() - started)
+        connections = queue_metrics.consumer_connections()
 
-        if not consumer_queues:
+        if not data:
             print("No consumer queues found!")
             return
 
         print("Consumer Queue Status:")
         print("=" * 80)
 
-        for queue in consumer_queues:
-            name = queue.get("name", "Unknown")
-            messages = queue.get("messages", 0)
-            messages_ready = queue.get("messages_ready", 0)
-            messages_unacked = queue.get("messages_unacknowledged", 0)
-            consumers = queue.get("consumers", 0)
-            state = queue.get("state", "unknown")
+        for queue in data:
+            name = queue["name"]
+            consumers = queue["consumers"]
 
             print(f"\nQueue: {name}")
-            print(f"  State: {state}")
-            print(f"  Total Messages: {messages}")
-            print(f"  Ready Messages: {messages_ready}")
-            print(f"  Unacked Messages: {messages_unacked}")
+            print(f"  Total Messages: {queue['messages']}")
+            print(f"  Ready Messages: {queue['messages_ready']}")
+            print(f"  Unacked Messages: {queue['messages_unacknowledged']}")
             print(f"  Active Consumers: {consumers}")
 
-            message_stats = queue.get("message_stats", {})
-            if message_stats:
-                ack_rate = message_stats.get("ack_details", {}).get("rate", 0)
-                publish_rate = message_stats.get("publish_details", {}).get("rate", 0)
-                print(f"  Ack Rate: {ack_rate:.2f} msg/s")
-                print(f"  Publish Rate: {publish_rate:.2f} msg/s")
+            queue_rate = rates.get((queue["vhost"], name))
+            if queue_rate:
+                print(f"  Ack Rate: {_format_rate(queue_rate['ack'])}")
+                print(f"  Publish Rate: {_format_rate(queue_rate['publish'])}")
 
-            if consumers > 0 and "consumer_details" in queue:
+            if consumers > 0:
                 print("  Consumer Details:")
-                for consumer in queue.get("consumer_details", []):
-                    consumer_tag = consumer.get("consumer_tag", "Unknown")
-                    channel_details = consumer.get("channel_details", {})
-                    connection_name = channel_details.get("connection_name", "Unknown")
-                    print(f"    - Tag: {consumer_tag}")
-                    print(f"      Connection: {connection_name}")
+                if connections is None:
+                    print("    Unavailable: could not read consumers from the broker container")
+                    continue
+                for consumer in connections.get(name, []):
+                    print(f"    - Tag: {consumer['consumer_tag']}")
+                    print(f"      Connection: {consumer['connection_name']}")
 
     except requests.ConnectionError:
-        print(f"Error: Could not connect to RabbitMQ management API at {url}")
+        print(f"Error: Could not connect to RabbitMQ Prometheus endpoint at {queue_metrics.display_endpoint(base_url)}")
         print("\nMake sure:")
         print("1. RabbitMQ is running (docker-compose up -d)")
-        print("2. Management plugin is enabled")
-        print("3. Port 15672 is accessible")
+        print("2. The rabbitmq_prometheus plugin is enabled")
+        print("3. Port 15692 is accessible (or set RABBITMQ_PROMETHEUS_URL)")
     except requests.HTTPError as e:
         # requests types `HTTPError.response` as optional — it is unset when the error
         # is raised without a response attached.
         status = e.response.status_code if e.response is not None else "unknown"
-        print(f"Error: HTTP {status} from RabbitMQ management API")
+        print(f"Error: HTTP {status} from RabbitMQ Prometheus endpoint")
     except Exception as e:
         print(f"Unexpected error: {e}")
 

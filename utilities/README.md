@@ -26,13 +26,23 @@ uv run groovemap-check-errors 30
 
 ## `groovemap-check-queues`
 
-Performs one 10-second read against the RabbitMQ Management API `/api/queues` endpoint. It prints
-state, total, ready and unacknowledged counts, consumers, optional consumer details, and available
-publish/acknowledgement rates for queue names containing `graphinator` or `tableinator`.
+Takes two samples of the RabbitMQ Prometheus `/metrics/detailed` endpoint (default
+`http://localhost:15692`) `RABBITMQ_SAMPLE_INTERVAL` seconds apart (default 5). It prints total,
+ready and unacknowledged counts, consumers, consumer tags with connection names, and
+publish/acknowledgement rates for queues named with the catalog contract prefixes
+(`DISCOGS_EXCHANGE_PREFIX`, `MUSICBRAINZ_EXCHANGE_PREFIX`). Queue state is not exposed by the
+endpoint and is no longer printed.
 
-- Uses the RabbitMQ URL and credentials described in [configuration](../docs/configuration.md).
+- Reads no management API statistics, so it works with management metrics collection disabled.
+  Needs no credentials; see [configuration](../docs/configuration.md) for `RABBITMQ_PROMETHEUS_URL`,
+  `RABBITMQ_CONTAINER`, and `RABBITMQ_SAMPLE_INTERVAL`.
+- Connection names come from `docker exec <container> rabbitmqctl` (`list_consumers` joined with
+  `list_channels` and `list_connections`), verified on RabbitMQ 4.4.0 with
+  `management_agent.disable_metrics_collector = true`. If that lookup fails, the rest of the
+  report is still printed and the consumer details say they are unavailable.
+- A rate is `n/a` when a counter decreased between samples (broker restart or queue recreated).
 - Does not declare, bind, purge, acknowledge, or delete queues.
-- Reports connection, HTTP, and payload failures without printing credentials. These observations
+- Reports connection and HTTP failures with the endpoint host and port only. These observations
   do not change the command's exit status.
 
 ```bash
@@ -41,14 +51,16 @@ uv run groovemap-check-queues
 
 ## `groovemap-monitor-queues [seconds]`
 
-Repeatedly reads RabbitMQ queue statistics, clears the terminal, and displays ready,
-unacknowledged, and total counts. Queues with unacknowledged messages are highlighted.
+Repeatedly reads the RabbitMQ Prometheus `/metrics/detailed` endpoint, clears the terminal, and
+displays ready, unacknowledged, and total counts plus publish and acknowledgement rates computed
+from consecutive refreshes (`-` on the first refresh or after a counter reset). Queues with
+unacknowledged messages are highlighted.
 
 - `seconds` is an integer passed to the refresh sleep, optional, and defaults to `5`; use a
   positive value.
 - Stop with Ctrl+C.
 - An empty successful response is displayed distinctly from a connection failure.
-- Displays queues whose names contain `groovemap` or `musicbrainz`; it does not declare, bind,
+- Displays queues named with the catalog contract prefixes; it does not declare, bind,
   purge, acknowledge, or delete them.
 
 ```bash
@@ -115,7 +127,7 @@ counts, PostgreSQL table statistics, and recent service error lines.
 
 - Requires Docker plus the deployment-provided database command-line clients in their
   containers.
-- Reads the active Compose project, the RabbitMQ Management API, fixed database containers
+- Reads the active Compose project, the RabbitMQ Prometheus endpoint (`RABBITMQ_PROMETHEUS_URL`), fixed database containers
   `groovemap-neo4j` and `groovemap-postgres`, and the same six compatibility service logs as
   `groovemap-check-errors`.
 - Database queries are read-only statistics queries.

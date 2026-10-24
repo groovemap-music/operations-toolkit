@@ -66,7 +66,7 @@ def find_prohibited_material(files: list[Path]) -> list[str]:
 def validate_synthetic_environment(path: Path) -> None:
     """Require reserved, non-secret values in the tracked environment example."""
     values = dict(line.split("=", 1) for line in path.read_text().splitlines() if line and not line.startswith("#"))
-    assert values["RABBITMQ_URL"] == "https://rabbitmq.example.test"
+    assert values["RABBITMQ_PROMETHEUS_URL"] == "https://rabbitmq-metrics.example.test"
     assert values["RABBITMQ_USERNAME"] == "observer"
     assert values["NEO4J_USERNAME"] == "observer"
     assert values["POSTGRES_USERNAME"] == "observer"
