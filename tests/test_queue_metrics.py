@@ -55,6 +55,18 @@ def test_parse_multiple_queues_and_missing_counters() -> None:
     assert (b["name"], b["messages"], b["messages_ready"], b["messages_unacknowledged"]) == ("b", 5, 4, 1)
 
 
+def test_parse_sums_published_across_exchanges() -> None:
+    text = "\n".join(
+        [
+            'rabbitmq_detailed_queue_exchange_messages_published_total{vhost="/",exchange="fx",queue="a"} 30',
+            'rabbitmq_detailed_queue_exchange_messages_published_total{vhost="/",exchange="",queue="a"} 5',
+            'rabbitmq_detailed_queue_exchange_messages_published_total{vhost="/",exchange="fx",queue="b"} 7',
+        ],
+    )
+    a, b = queue_metrics.parse_detailed_metrics(text)
+    assert (a["published_total"], b["published_total"]) == (35, 7)
+
+
 def test_parse_empty_text() -> None:
     assert queue_metrics.parse_detailed_metrics("") == []
 

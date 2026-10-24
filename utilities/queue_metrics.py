@@ -76,7 +76,8 @@ def parse_detailed_metrics(text: str) -> list[dict[str, Any]]:
     Keys mirror the management payload (``name``, ``messages``, ``messages_ready``,
     ``messages_unacknowledged``, ``consumers``) plus ``vhost`` and the cumulative
     ``acked_total`` / ``published_total`` counters. A series the broker has not emitted yet
-    (a counter appears with the first publish or ack) is reported as 0.
+    (a counter appears with the first publish or ack) is reported as 0. ``published_total``
+    sums the per-exchange series of a queue.
     """
     queues: dict[tuple[str, str], dict[str, Any]] = {}
     for line in text.splitlines():
@@ -100,7 +101,11 @@ def parse_detailed_metrics(text: str) -> list[dict[str, Any]]:
                 "published_total": 0,
             },
         )
-        queue[_GAUGES[match.group(1)]] = int(float(match.group(3)))
+        field = _GAUGES[match.group(1)]
+        value = int(float(match.group(3)))
+        # The published counter has one series per publishing exchange (a retry or DLX
+        # republish through the default exchange adds a second one), so it is summed.
+        queue[field] = queue[field] + value if field == "published_total" else value
     return sorted(queues.values(), key=lambda q: (q["name"], q["vhost"]))
 
 
