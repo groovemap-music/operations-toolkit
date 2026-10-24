@@ -5,10 +5,12 @@ placeholder secret-file paths; this repository does not contain a deployable env
 
 | Variable | Used by | Default | Meaning |
 | --- | --- | --- | --- |
-| `RABBITMQ_URL` | queue check, queue monitor, system monitor | `http://localhost:15672` | RabbitMQ Management API base URL. |
-| `RABBITMQ_USERNAME` | RabbitMQ tools | `groovemap` | Least-privileged monitoring account. |
-| `RABBITMQ_PASSWORD_FILE` | RabbitMQ tools | unset | File containing the password; preferred. |
-| `RABBITMQ_PASSWORD` | RabbitMQ tools | empty | Direct fallback when no file variable is set. |
+| `RABBITMQ_PROMETHEUS_URL` | queue check, queue monitor, system monitor | `http://localhost:15692` | rabbitmq_prometheus base URL; `/metrics/detailed` is read without credentials. |
+| `RABBITMQ_CONTAINER` | queue check | `groovemap-rabbitmq` | Broker container used for `docker exec rabbitmqctl` to list consumer connection names. |
+| `RABBITMQ_SAMPLE_INTERVAL` | queue check | `5` | Seconds between the two samples used for publish and ack rates; invalid or non-positive values use the default. |
+| `RABBITMQ_USERNAME` | debug message | `groovemap` | Least-privileged AMQP account. |
+| `RABBITMQ_PASSWORD_FILE` | debug message | unset | File containing the password; preferred. |
+| `RABBITMQ_PASSWORD` | debug message | empty | Direct fallback when no file variable is set. |
 | `NEO4J_USERNAME` | system monitor | `neo4j` | Neo4j read-only account passed into the container. |
 | `NEO4J_PASSWORD_FILE` | system monitor | unset | File containing the Neo4j password; preferred. |
 | `NEO4J_PASSWORD` | system monitor | empty | Direct fallback when no file variable is set. |
@@ -17,7 +19,7 @@ placeholder secret-file paths; this repository does not contain a deployable env
 | `DISCOGS_EXCHANGE_PREFIX` | queue naming | `groovemap-discogs` | Discogs exchange/queue namespace. |
 | `MUSICBRAINZ_EXCHANGE_PREFIX` | queue naming | `groovemap-musicbrainz` | MusicBrainz exchange/queue namespace. |
 
-`groovemap-debug-message` does not read `RABBITMQ_URL`: its CLI connects to AMQP on
+The queue tools no longer read the management API, so `RABBITMQ_URL` and the management credentials are not used by them. `groovemap-debug-message` does not read `RABBITMQ_PROMETHEUS_URL`: its CLI connects to AMQP on
 `localhost` using Pika's default port. Library callers can pass a synthetic or
 deployment-provided host to `get_message_from_queue`; this repository does not publish a live
 broker address. Prefix overrides are read when the catalog adapter is imported, so set them

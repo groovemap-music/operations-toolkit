@@ -2,41 +2,44 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import requests
 
 from utilities import monitor_queues
 
 
-def _response(payload: list[dict]) -> MagicMock:
-    resp = MagicMock()
-    resp.json.return_value = payload
-    resp.raise_for_status.return_value = None
-    return resp
+def _q(name: str, ready: int, unacked: int, total: int, *, acked: int = 0, published: int = 0) -> dict:
+    return {
+        "name": name,
+        "vhost": "/",
+        "messages_ready": ready,
+        "messages_unacknowledged": unacked,
+        "messages": total,
+        "acked_total": acked,
+        "published_total": published,
+    }
 
 
 def test_get_queue_stats_success() -> None:
-    payload = [{"name": "groovemap-discogs-graphinator-artists"}]
-    with patch.object(monitor_queues.requests, "get", return_value=_response(payload)) as get:
-        result = monitor_queues.get_queue_stats(base_url="http://rmq", username="u", password="p")  # noqa: S106
-    assert result == payload
-    get.assert_called_once()
-    assert get.call_args.kwargs["timeout"] == 10
-    assert get.call_args.args[0] == "http://rmq/api/queues"
+    payload = [_q("groovemap-discogs-graphinator-artists", 0, 0, 0)]
+    with patch.object(monitor_queues.queue_metrics, "fetch_queue_metrics", return_value=payload) as fetch:
+        assert monitor_queues.get_queue_stats(base_url="http://prom:15692") == payload
+    fetch.assert_called_once_with("http://prom:15692")
 
 
-def test_get_queue_stats_request_error(capsys) -> None:
-    with patch.object(monitor_queues.requests, "get", side_effect=requests.RequestException("down")):
-        assert monitor_queues.get_queue_stats() is None
-    assert "Error connecting to RabbitMQ" in capsys.readouterr().out
+def test_get_queue_stats_request_error_hides_credentials(capsys) -> None:
+    with patch.object(monitor_queues.queue_metrics, "fetch_queue_metrics", side_effect=requests.RequestException("down")):
+        assert monitor_queues.get_queue_stats(base_url="http://user:secret@prom.example.test:15692") is None
+    out = capsys.readouterr().out
+    assert "Error connecting to RabbitMQ Prometheus endpoint at http://prom.example.test:15692" in out
+    assert "secret" not in out
 
 
 def test_monitor_queues_renders_then_stops(capsys) -> None:
     payload = [
-        {"name": "groovemap-discogs-graphinator-artists", "messages_ready": 4, "messages_unacknowledged": 2, "messages": 6},
-        {"name": "groovemap-musicbrainz-tableinator-releases", "messages_ready": 1, "messages_unacknowledged": 0, "messages": 1},
-        {"name": "ignored-queue", "messages_ready": 9, "messages_unacknowledged": 9, "messages": 9},
+        _q("groovemap-discogs-graphinator-artists", 4, 2, 6),
+        _q("groovemap-musicbrainz-tableinator-releases", 1, 0, 1),
     ]
     with (
         patch.object(monitor_queues, "get_queue_stats", return_value=payload),
@@ -48,9 +51,37 @@ def test_monitor_queues_renders_then_stops(capsys) -> None:
     out = capsys.readouterr().out
     assert "graphinator-artists" in out
     assert "tableinator-releases" in out
-    assert "ignored-queue" not in out
     assert "Total messages across all queues: 7" in out
     assert "Monitoring stopped." in out
+
+
+def test_monitor_queues_computes_rates_from_consecutive_refreshes(capsys) -> None:
+    name = "groovemap-discogs-graphinator-artists"
+    samples = [[_q(name, 0, 0, 0, acked=10, published=10)], [_q(name, 0, 0, 0, acked=30, published=70)]]
+    with (
+        patch.object(monitor_queues, "get_queue_stats", side_effect=[*samples, KeyboardInterrupt]),
+        patch.object(monitor_queues.time, "sleep", return_value=None),
+        patch.object(monitor_queues.time, "monotonic", side_effect=[0.0, 10.0]),
+    ):
+        monitor_queues.monitor_queues(interval=1)
+
+    first, second = capsys.readouterr().out.split("RabbitMQ Queue Monitor")[1:3]
+    assert f"{name:<50} 0          0          0          -        -" in first
+    assert "6.00     2.00" in second
+
+
+def test_monitor_queues_counter_reset_shows_no_rate(capsys) -> None:
+    name = "groovemap-discogs-graphinator-artists"
+    samples = [[_q(name, 0, 0, 0, acked=50, published=50)], [_q(name, 0, 0, 0, acked=1, published=1)]]
+    with (
+        patch.object(monitor_queues, "get_queue_stats", side_effect=[*samples, KeyboardInterrupt]),
+        patch.object(monitor_queues.time, "sleep", return_value=None),
+        patch.object(monitor_queues.time, "monotonic", side_effect=[0.0, 5.0]),
+    ):
+        monitor_queues.monitor_queues(interval=1)
+
+    second = capsys.readouterr().out.split("RabbitMQ Queue Monitor")[2]
+    assert "-        -" in second
 
 
 def test_monitor_queues_handles_empty_fetch(capsys) -> None:
@@ -82,3 +113,10 @@ def test_monitor_queues_empty_list_is_not_a_fetch_failure(capsys) -> None:
     assert "Failed to fetch queue data" not in out
     assert "No queues declared yet" in out
     assert "Monitoring stopped." in out
+
+
+def test_main_passes_interval_argument(monkeypatch) -> None:
+    monkeypatch.setattr(monitor_queues.sys, "argv", ["groovemap-monitor-queues", "10"])
+    with patch.object(monitor_queues, "monitor_queues") as monitor:
+        monitor_queues.main()
+    monitor.assert_called_once_with(10)
