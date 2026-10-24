@@ -7,7 +7,8 @@ from typing import Any
 
 import requests
 
-from utilities._transport import docker_compose_output, rabbitmq_queues
+from utilities import queue_metrics
+from utilities._transport import docker_compose_output
 from utilities.catalog_contract import DISCOGS_EXCHANGE_PREFIX, MUSICBRAINZ_EXCHANGE_PREFIX
 from utilities.secrets import get_secret
 
@@ -22,17 +23,10 @@ def get_docker_stats() -> list[dict[str, Any]]:
         return []
 
 
-def get_queue_stats(
-    base_url: str | None = None,
-    username: str | None = None,
-    password: str | None = None,
-) -> list[dict[str, Any]] | None:
-    """Fetch queue statistics from RabbitMQ Management API."""
-    base_url = base_url or os.environ.get("RABBITMQ_URL", "http://localhost:15672")
-    username = username or os.environ.get("RABBITMQ_USERNAME", "groovemap")
-    password = password or get_secret("RABBITMQ_PASSWORD", "")
+def get_queue_stats(base_url: str | None = None) -> list[dict[str, Any]] | None:
+    """Fetch queue statistics from the RabbitMQ Prometheus endpoint."""
     try:
-        return rabbitmq_queues(requests.get, base_url, username, password)
+        return queue_metrics.fetch_queue_metrics(base_url)
     except requests.RequestException:
         return None
 
@@ -136,16 +130,14 @@ def monitor_system() -> None:
     else:
         total_messages = 0
         for queue in queues:
-            if queue["name"].startswith((DISCOGS_EXCHANGE_PREFIX, MUSICBRAINZ_EXCHANGE_PREFIX)):
-                # Shorten for display using the env-derived prefixes, not hardcoded
-                # literals — under a prefix override the labels stayed fully qualified
-                # and the filter above would match nothing at all.
-                name = queue["name"].replace(f"{DISCOGS_EXCHANGE_PREFIX}-", "").replace(f"{MUSICBRAINZ_EXCHANGE_PREFIX}-", "mb-")
-                ready = queue.get("messages_ready", 0)
-                unacked = queue.get("messages_unacknowledged", 0)
-                total = queue.get("messages", 0)
-                total_messages += total
-                print(f"  {name:<30} Ready: {ready:<8} Unacked: {unacked:<8} Total: {total}")
+            # The broker-side queue regex already selects the contract prefixes. Shorten
+            # for display using the env-derived prefixes, not hardcoded literals.
+            name = queue["name"].replace(f"{DISCOGS_EXCHANGE_PREFIX}-", "").replace(f"{MUSICBRAINZ_EXCHANGE_PREFIX}-", "mb-")
+            ready = queue.get("messages_ready", 0)
+            unacked = queue.get("messages_unacknowledged", 0)
+            total = queue.get("messages", 0)
+            total_messages += total
+            print(f"  {name:<30} Ready: {ready:<8} Unacked: {unacked:<8} Total: {total}")
         print(f"\n  Total messages: {total_messages}")
 
     print("\n🔷 Neo4j Database Status:")

@@ -53,17 +53,13 @@ def test_get_docker_stats_timeout() -> None:
 # get_queue_stats
 # --------------------------------------------------------------------------- #
 def test_get_queue_stats_success() -> None:
-    resp = MagicMock()
-    resp.json.return_value = [{"name": "q"}]
-    resp.raise_for_status.return_value = None
-    with patch.object(system_monitor.requests, "get", return_value=resp) as get:
-        result = system_monitor.get_queue_stats(base_url="http://rmq", username="u", password="p")  # noqa: S106
-    assert result == [{"name": "q"}]
-    assert get.call_args.kwargs["timeout"] == 10
+    with patch.object(system_monitor.queue_metrics, "fetch_queue_metrics", return_value=[{"name": "q"}]) as fetch:
+        assert system_monitor.get_queue_stats(base_url="http://prom:15692") == [{"name": "q"}]
+    fetch.assert_called_once_with("http://prom:15692")
 
 
 def test_get_queue_stats_error() -> None:
-    with patch.object(system_monitor.requests, "get", side_effect=requests.RequestException()):
+    with patch.object(system_monitor.queue_metrics, "fetch_queue_metrics", side_effect=requests.RequestException()):
         assert system_monitor.get_queue_stats() is None
 
 
