@@ -72,7 +72,7 @@ history-rehearsal source-repository output-directory:
 check-errors *args:
     uv run groovemap-check-errors {{args}}
 
-# Observational: reads one RabbitMQ Management API snapshot without changing queues.
+# Observational: reads one rabbitmq_prometheus /metrics/detailed snapshot without changing queues.
 check-queues:
     uv run groovemap-check-queues
 
