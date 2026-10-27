@@ -1,7 +1,7 @@
 # Release compliance
 
 The repository gate is credential-free and does not contact a deployment. `just check` verifies
-formatting, linting, types, tests and coverage, the promoted event contract, the public-content
+formatting, linting, types, tests and coverage, both promoted producer contracts, the public-content
 boundary, immutable automation, package construction and installation, MIT metadata, complete
 Git and worktree secret scans, and version consistency. `just audit` is deliberately outside
 that credential-free gate because it adds the current network-backed Python vulnerability audit.

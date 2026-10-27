@@ -19,11 +19,12 @@ placeholder secret-file paths; this repository does not contain a deployable env
 | `DISCOGS_EXCHANGE_PREFIX` | queue naming | `groovemap-discogs` | Discogs exchange/queue namespace. |
 | `MUSICBRAINZ_EXCHANGE_PREFIX` | queue naming | `groovemap-musicbrainz` | MusicBrainz exchange/queue namespace. |
 
-The queue tools no longer read the management API, so `RABBITMQ_URL` and the management credentials are not used by them. `groovemap-debug-message` does not read `RABBITMQ_PROMETHEUS_URL`: its CLI connects to AMQP on
-`localhost` using Pika's default port. Library callers can pass a synthetic or
-deployment-provided host to `get_message_from_queue`; this repository does not publish a live
-broker address. Prefix overrides are read when the catalog adapter is imported, so set them
-before starting a command.
+The queue tools do not read the RabbitMQ management API, so `RABBITMQ_URL` and management
+credentials are not used by them. `groovemap-debug-message` does not read
+`RABBITMQ_PROMETHEUS_URL`: its CLI connects to AMQP on `localhost` using Pika's default port.
+Library callers can pass a synthetic or deployment-provided host to `get_message_from_queue`;
+this repository does not publish a live broker address. Prefix overrides are read when the
+catalog adapter is imported, so set them before starting a command.
 
 ## Synthetic example
 

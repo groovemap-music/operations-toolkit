@@ -20,8 +20,8 @@ Run `just coverage` to reproduce the measurement. Coverage collects every test u
 and measures the complete `utilities` package. It omits only test files and package
 `__init__.py` markers. The measured package includes `_transport.py`, `catalog_contract.py`,
 `check_errors.py`, `check_queues.py`, `debug_message.py`, `healthcheck.py`,
-`monitor_queues.py`, `secrets.py`, and `system_monitor.py`; operator entry points must not be
-removed from scope to protect the percentage.
+`monitor_queues.py`, `queue_metrics.py`, `secrets.py`, and `system_monitor.py`; operator entry
+points must not be removed from scope to protect the percentage.
 
 The floor is the baseline truncated conservatively to two decimals. This matches Codecov's
 configured `round: down` behavior while remaining below the exact measured result.
