@@ -3,8 +3,8 @@
 The toolkit is a thin operational layer over standard deployment interfaces. Command modules
 format observations for humans; two source-owned producer contracts define queue naming, and a
 hand-authored local adapter composes them behind one import. Private transport helpers centralize
-bounded RabbitMQ Management GETs and Docker Compose reads, while the secret helper keeps
-credential values out of arguments and logs.
+bounded RabbitMQ Prometheus `/metrics/detailed` GETs, `docker exec` reads, and Docker Compose
+reads, while the secret helper keeps credential values out of arguments and logs.
 
 ```mermaid
 flowchart LR
@@ -13,8 +13,8 @@ flowchart LR
     DiscogsContract[discogs-ingestion event contract] --> Adapter[Local queue-name adapter]
     MusicBrainzContract[musicbrainz-ingestion event contract] --> Adapter
     Adapter --> CLI
-    CLI -->|read logs and status| Docker[Docker Compose]
-    CLI -->|read queue statistics or peek/requeue| RabbitMQ[RabbitMQ]
+    CLI -->|read logs, status, and rabbitmqctl consumers| Docker[Docker Compose]
+    CLI -->|read Prometheus queue metrics or peek/requeue| RabbitMQ[RabbitMQ]
     CLI -->|read aggregate counts| Neo4j[Neo4j]
     CLI -->|read table statistics| Postgres[PostgreSQL]
     CLI --> Output[Terminal observations]
@@ -42,8 +42,8 @@ not imported as the toolkit's shared runtime API.
 
 ## Side-effect boundary
 
-Most operations are HTTP GETs, read-only database queries, process inspection, or Docker status
-and log reads. `groovemap-debug-message` is the narrow exception: it performs AMQP `basic_get`
-with acknowledgements disabled, then immediately sends `basic_nack(requeue=True)` before parsing
-the body. The queue content is retained even when parsing fails, but delivery ordering can
+Most operations are HTTP GETs, read-only database queries, process inspection, `rabbitmqctl`
+listings, or Docker status and log reads. `groovemap-debug-message` is the narrow exception: it
+performs AMQP `basic_get` with acknowledgements disabled, then immediately sends
+`basic_nack(requeue=True)` before parsing the body. The queue content is retained even when parsing fails, but delivery ordering can
 change, so its documentation calls out that effect explicitly.

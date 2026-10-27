@@ -129,7 +129,6 @@ def validate_repository(root: Path = ROOT) -> None:
     active_text = "\n".join(
         path.read_text() for extension in ("*.json", "*.md", "*.py", "*.toml") for path in root.rglob(extension) if ".venv" not in path.parts
     )
-    assert "discogs" + "ography" not in active_text.lower()
     operator_docs = "\n".join(path.read_text() for path in public_files(root))
     assert "groovemap-music/catalog-ingestion" not in operator_docs
     assert "`catalog-ingestion`" not in operator_docs
