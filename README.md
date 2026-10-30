@@ -1,11 +1,38 @@
 # GrooveMap operations toolkit
 
-`operations-toolkit` packages credential-conscious, primarily observational utilities for
-inspecting a GrooveMap deployment. The tools report queue activity, recent service errors,
-process presence, container health, and database statistics. `groovemap-debug-message` is the
-narrow stateful exception: it gets and immediately requeues one delivery, which can affect
-delivery order. The tools do not purge queues, modify databases, restart services, or publish
-deployment configuration.
+`operations-toolkit` is a set of command-line utilities for operators who inspect a running
+GrooveMap deployment. The tools are primarily observational and credential-conscious. They
+report:
+
+- queue activity (RabbitMQ);
+- recent service errors;
+- process presence;
+- container health;
+- database statistics (Neo4j and PostgreSQL).
+
+`groovemap-debug-message` is the narrow stateful exception: it gets and immediately requeues
+one delivery, which can affect delivery order. The tools do not purge queues, modify
+databases, restart services, or publish deployment configuration.
+
+## Quick start
+
+You need a checkout of this repository, [mise](https://mise.jdx.dev/), and Docker (only for the
+commands that read containers, plus the connection-name lookup in `groovemap-check-queues`). `mise install` provides the pinned Python 3.14, `uv`, `just`,
+and `gitleaks`.
+
+```bash
+mise install
+just setup
+just healthcheck python       # exit code 0 if a matching process is running, 1 if not
+```
+
+Commands that inspect a deployment run from that deployment's Compose project directory, with
+the [configuration](docs/configuration.md) set in your environment:
+
+```bash
+uv run groovemap-check-queues       # RabbitMQ queue snapshot
+uv run groovemap-check-errors 30    # service errors from the last 30 minutes
+```
 
 ## Supported commands
 
@@ -56,8 +83,8 @@ baseline and the ratchet enforced by local checks, the required CI job, and Code
 requests from maintainers and Dependabot use the same actor-independent `required` job and
 therefore the same coverage floor.
 
-Running bare `just` lists those recipes plus the six explicit operator wrappers documented in
-the [command reference](utilities/README.md): `just check-errors`, `just check-queues`,
+Running bare `just` lists those recipes plus the six operator wrappers documented in the
+[command reference](utilities/README.md): `just check-errors`, `just check-queues`,
 `just monitor-queues`, `just healthcheck`, and `just system-monitor` are observational;
 `just debug-message` performs the documented get-and-requeue operation.
 

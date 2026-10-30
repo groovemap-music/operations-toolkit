@@ -18,7 +18,8 @@ groups lines matching error, exception, traceback, and processing-failure patter
 - Groups matching lines by error shape and prints a total count; it does not alter containers or
   logs.
 - A Docker timeout or command failure is counted and reported as an observation for that service;
-  observed errors do not change the command's exit status.
+  observed errors do not change the command's exit status. If the `docker` binary is not
+  installed, the command aborts with a Python traceback.
 
 ```bash
 uv run groovemap-check-errors 30
@@ -30,12 +31,13 @@ Takes two samples of the RabbitMQ Prometheus `/metrics/detailed` endpoint (defau
 `http://localhost:15692`) `RABBITMQ_SAMPLE_INTERVAL` seconds apart (default 5). It prints total,
 ready and unacknowledged counts, consumers, consumer tags with connection names, and
 publish/acknowledgement rates for queues named with the catalog contract prefixes
-(`DISCOGS_EXCHANGE_PREFIX`, `MUSICBRAINZ_EXCHANGE_PREFIX`). Queue state is not exposed by the
-endpoint and is no longer printed.
+(`DISCOGS_EXCHANGE_PREFIX`, `MUSICBRAINZ_EXCHANGE_PREFIX`). It prints `No consumer queues found!`
+when none match.
 
 - Reads no management API statistics, so it works with management metrics collection disabled.
   Needs no credentials; see [configuration](../docs/configuration.md) for `RABBITMQ_PROMETHEUS_URL`,
-  `RABBITMQ_CONTAINER`, and `RABBITMQ_SAMPLE_INTERVAL`.
+  `RABBITMQ_CONTAINER`, and `RABBITMQ_SAMPLE_INTERVAL`. The connection-name lookup needs the
+  Docker CLI.
 - Connection names come from `docker exec <container> rabbitmqctl` (`list_consumers` joined with
   `list_channels` and `list_connections`), verified on RabbitMQ 4.4.0 with
   `management_agent.disable_metrics_collector = true`. If that lookup fails, the rest of the
@@ -125,13 +127,18 @@ uv run groovemap-healthcheck catalog-api
 Runs a combined snapshot of Docker Compose containers, RabbitMQ catalog queues, Neo4j node
 counts, PostgreSQL table statistics, and recent service error lines.
 
-- Requires Docker plus the deployment-provided database command-line clients in their
-  containers.
-- Reads the active Compose project, the RabbitMQ Prometheus endpoint (`RABBITMQ_PROMETHEUS_URL`), fixed database containers
-  `groovemap-neo4j` and `groovemap-postgres`, and the same six compatibility service logs as
-  `groovemap-check-errors`.
-- Database queries are read-only statistics queries.
-- Missing or inaccessible subsystems are reported without stopping the remaining checks.
+- Requires the Docker CLI, and the deployment-provided database command-line clients
+  (`cypher-shell` and `psql`) inside their containers.
+- Reads the active Compose project, the RabbitMQ Prometheus endpoint (`RABBITMQ_PROMETHEUS_URL`),
+  fixed database containers `groovemap-neo4j` and `groovemap-postgres`, and the last 50 log
+  lines of the same six compatibility services as `groovemap-check-errors`.
+- Database queries are read-only statistics queries: the ten most common Neo4j node labels and
+  the ten largest PostgreSQL tables by row estimate.
+- The error section shows at most the last five lines per service that contain `ERROR` or
+  `Failed`.
+- Timeouts, command errors, and unreachable endpoints are reported for that subsystem without
+  stopping the remaining checks. The Docker CLI must be installed: without it the command
+  aborts with a Python traceback.
 - Output can reveal topology, object counts, and log excerpts and must be handled accordingly.
 
 ```bash
