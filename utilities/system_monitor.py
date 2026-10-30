@@ -65,7 +65,8 @@ def check_neo4j_status() -> str:
             timeout=60,
             env=env,
         )
-        return result.stdout
+        stdout: str = result.stdout
+        return stdout
     except DockerUnavailableError as e:
         return f"Error: {e}"
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
@@ -95,7 +96,8 @@ def check_postgres_status() -> str:
             check=True,
             timeout=60,
         )
-        return result.stdout
+        stdout: str = result.stdout
+        return stdout
     except DockerUnavailableError as e:
         return f"Error: {e}"
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
@@ -110,13 +112,12 @@ def monitor_system() -> None:
 
     print("\n📦 Docker Container Status:")
     print("-" * 40)
+    docker_problem: str | None = None
     try:
         containers = get_docker_stats()
     except DockerUnavailableError as e:
         docker_problem = str(e)
         containers = []
-    else:
-        docker_problem = None
     if containers:
         for container in containers:
             health = container.get("Health", "N/A")
