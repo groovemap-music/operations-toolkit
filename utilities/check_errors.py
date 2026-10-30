@@ -4,11 +4,14 @@ import re
 import subprocess  # nosec B404
 import sys
 
-from utilities._transport import docker_compose_output
+from utilities._transport import DockerUnavailableError, docker_compose_output
 
 
 def check_service_errors(service: str, time_window: int = 60) -> list[str]:
-    """Check for errors in service logs within the specified time window (minutes)."""
+    """Check for errors in service logs within the specified time window (minutes).
+
+    Raises DockerUnavailableError when the Docker CLI cannot run.
+    """
     try:
         logs = docker_compose_output(subprocess.run, "logs", service, f"--since={time_window}m")
         errors = []
@@ -34,6 +37,14 @@ def check_service_errors(service: str, time_window: int = 60) -> list[str]:
 
 
 def main() -> None:
+    try:
+        _run()
+    except DockerUnavailableError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _run() -> None:
     services = ["extractor-discogs", "extractor-musicbrainz", "graphinator", "tableinator", "brainzgraphinator", "brainztableinator"]
     time_window = int(sys.argv[1]) if len(sys.argv) > 1 else 60
 

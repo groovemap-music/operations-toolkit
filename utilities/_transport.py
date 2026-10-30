@@ -33,14 +33,29 @@ def rabbitmq_detailed_metrics(
     return text
 
 
+class DockerUnavailableError(OSError):
+    """The Docker CLI cannot be started (not installed, or not executable)."""
+
+
+def docker_run(run: Callable[..., Any], arguments: list[str], **kwargs: Any) -> Any:
+    """Run one ``docker`` invocation, converting a missing or unusable CLI into DockerUnavailableError."""
+    try:
+        return run(["docker", *arguments], **kwargs)
+    except FileNotFoundError as error:
+        raise DockerUnavailableError("Docker CLI not found on PATH") from error
+    except PermissionError as error:
+        raise DockerUnavailableError("Docker CLI is not executable") from error
+
+
 def docker_exec_output(
     run: Callable[..., Any],
     container: str,
     *arguments: str,
 ) -> str:
     """Run one bounded command inside a named container and return stdout."""
-    result = run(
-        ["docker", "exec", container, *arguments],
+    result = docker_run(
+        run,
+        ["exec", container, *arguments],
         capture_output=True,
         text=True,
         check=True,
@@ -55,8 +70,9 @@ def docker_compose_output(
     *arguments: str,
 ) -> str:
     """Run one bounded Docker Compose observation and return stdout."""
-    result = run(
-        ["docker", "compose", *arguments],
+    result = docker_run(
+        run,
+        ["compose", *arguments],
         capture_output=True,
         text=True,
         check=True,
