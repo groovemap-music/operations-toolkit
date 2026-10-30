@@ -44,6 +44,7 @@ not imported as the toolkit's shared runtime API.
 
 Most operations are HTTP GETs, read-only database queries, process inspection, `rabbitmqctl`
 listings, or Docker status and log reads. `groovemap-debug-message` is the narrow exception: it
-performs AMQP `basic_get` with acknowledgements disabled, then immediately sends
-`basic_nack(requeue=True)` before parsing the body. The queue content is retained even when parsing fails, but delivery ordering can
-change, so its documentation calls out that effect explicitly.
+performs AMQP `basic_get` without auto-acknowledgement, then immediately sends
+`basic_nack(requeue=True)` before parsing the body. The queue content is retained even when
+parsing fails, but delivery ordering can change, so its documentation calls out that effect
+explicitly.

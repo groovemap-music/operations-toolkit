@@ -17,9 +17,12 @@ metadata, then inventories runtime and development dependency licenses with `pip
 Dependency vulnerabilities are evaluated from the locked graph with `pip-audit` before a release
 is approved.
 
-The CI caller pins the public `groovemap-music/automation` workflow to an immutable commit and uses
-one `pull_request` job graph for every author, including Dependabot. Dependabot updates both the
-locked Python graph and workflow action pins; no Renovate workflow is active.
+The CI caller pins the public `groovemap-music/automation` workflow to an immutable commit and runs
+one `required` job graph for every author, including Dependabot. It runs on pull requests, pushes
+to `main`, a weekly schedule, and manual dispatch. Dependabot updates both the locked Python graph
+and workflow action pins; no Renovate workflow is active. Pushing a `v*` tag starts the separate
+`Release` workflow, which pins its own reusable workflow and is configured with `just check` and
+`just release-dry-run` as its validation and release commands.
 
 Publication remains a separate infrastructure decision. A reviewed green commit, successful
 hosted CI, a backed-up source-history rehearsal, and explicit operator approval are required before

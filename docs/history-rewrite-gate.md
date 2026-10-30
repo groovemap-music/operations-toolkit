@@ -25,7 +25,8 @@ flowchart TD
     Cutover --> Verify[Fresh-clone hosted verification]
 ```
 
-Run the rehearsal only with an absolute, nonexistent private evidence directory:
+The rehearsal needs `git`, `git-filter-repo`, `gitleaks`, and `trufflehog` on `PATH`. Run it only
+with an absolute, nonexistent private evidence directory:
 
 ```bash
 export PLANNING_ARCHIVE_REPO=/absolute/path/to/planning-archive
