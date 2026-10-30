@@ -18,8 +18,6 @@ import pytest
 from utilities import check_errors
 
 
-
-
 def _completed(stdout: str) -> MagicMock:
     result = MagicMock()
     result.stdout = stdout
