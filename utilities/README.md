@@ -18,7 +18,8 @@ groups lines matching error, exception, traceback, and processing-failure patter
 - Groups matching lines by error shape and prints a total count; it does not alter containers or
   logs.
 - A Docker timeout or command failure is counted and reported as an observation for that service;
-  observed errors do not change the command's exit status.
+  observed errors do not change the command's exit status. If the `docker` binary is not
+  installed, the command aborts with a Python traceback.
 
 ```bash
 uv run groovemap-check-errors 30
@@ -126,8 +127,8 @@ uv run groovemap-healthcheck catalog-api
 Runs a combined snapshot of Docker Compose containers, RabbitMQ catalog queues, Neo4j node
 counts, PostgreSQL table statistics, and recent service error lines.
 
-- Requires Docker plus the deployment-provided database command-line clients (`cypher-shell`
-  and `psql`) in their containers.
+- Requires the Docker CLI, and the deployment-provided database command-line clients
+  (`cypher-shell` and `psql`) inside their containers.
 - Reads the active Compose project, the RabbitMQ Prometheus endpoint (`RABBITMQ_PROMETHEUS_URL`),
   fixed database containers `groovemap-neo4j` and `groovemap-postgres`, and the last 50 log
   lines of the same six compatibility services as `groovemap-check-errors`.
@@ -135,7 +136,9 @@ counts, PostgreSQL table statistics, and recent service error lines.
   the ten largest PostgreSQL tables by row estimate.
 - The error section shows at most the last five lines per service that contain `ERROR` or
   `Failed`.
-- Missing or inaccessible subsystems are reported without stopping the remaining checks.
+- Timeouts, command errors, and unreachable endpoints are reported for that subsystem without
+  stopping the remaining checks. The Docker CLI must be installed: without it the command
+  aborts with a Python traceback.
 - Output can reveal topology, object counts, and log excerpts and must be handled accordingly.
 
 ```bash

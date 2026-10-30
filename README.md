@@ -17,7 +17,7 @@ databases, restart services, or publish deployment configuration.
 ## Quick start
 
 You need a checkout of this repository, [mise](https://mise.jdx.dev/), and Docker (only for the
-commands that read containers). `mise install` provides the pinned Python 3.14, `uv`, `just`,
+commands that read containers, plus the connection-name lookup in `groovemap-check-queues`). `mise install` provides the pinned Python 3.14, `uv`, `just`,
 and `gitleaks`.
 
 ```bash
