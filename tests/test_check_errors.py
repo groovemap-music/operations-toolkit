@@ -11,14 +11,13 @@ Also pins two repository contracts:
 from __future__ import annotations
 
 import subprocess
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from utilities import check_errors
 
 
-if TYPE_CHECKING:
-    import pytest
 
 
 def _completed(stdout: str) -> MagicMock:
@@ -117,3 +116,17 @@ def test_main_scans_split_extractor_services(monkeypatch: pytest.MonkeyPatch) ->
     assert "extractor-discogs" in seen
     assert "extractor-musicbrainz" in seen
     assert "extractor" not in seen
+
+
+def test_main_exits_with_one_line_error_when_docker_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(check_errors.sys, "argv", ["check_errors.py"])
+    monkeypatch.setenv("PATH", "")  # no docker binary can be found
+    with pytest.raises(SystemExit) as exit_info:
+        check_errors.main()
+    assert exit_info.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.err == "Error: Docker CLI not found on PATH\n"
+    assert "Traceback" not in captured.err

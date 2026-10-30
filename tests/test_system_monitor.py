@@ -8,11 +8,16 @@ and the split extractor service names used when scanning logs.
 from __future__ import annotations
 
 import subprocess
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import requests
 
 from utilities import system_monitor
+
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _completed(stdout: str) -> MagicMock:
@@ -227,3 +232,22 @@ def test_monitor_system_scans_split_extractor_services() -> None:
     assert "extractor-discogs" in seen
     assert "extractor-musicbrainz" in seen
     assert "extractor" not in seen
+
+
+# --------------------------------------------------------------------------- #
+# Docker CLI missing
+# --------------------------------------------------------------------------- #
+def test_monitor_system_reports_missing_docker_and_continues(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("PATH", "")  # no docker binary can be found
+    queue_stats = [{"name": "q", "messages": 3, "messages_ready": 3, "messages_unacknowledged": 0}]
+    with patch.object(system_monitor, "get_queue_stats", return_value=queue_stats) as get_queues:
+        system_monitor.monitor_system()
+    get_queues.assert_called_once()
+    out = capsys.readouterr().out
+    assert out.count("Docker unavailable: Docker CLI not found on PATH") == 4
+    assert "Total messages: 3" in out  # the non-Docker check still ran
+    assert "Traceback" not in out
+    assert out.rstrip().endswith("=" * 80)  # ran to completion

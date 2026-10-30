@@ -8,13 +8,13 @@ from typing import Any
 import requests
 
 from utilities import queue_metrics
-from utilities._transport import docker_compose_output
+from utilities._transport import DockerUnavailableError, docker_compose_output, docker_run
 from utilities.catalog_contract import DISCOGS_EXCHANGE_PREFIX, MUSICBRAINZ_EXCHANGE_PREFIX
 from utilities.secrets import get_secret
 
 
 def get_docker_stats() -> list[dict[str, Any]]:
-    """Get Docker container statistics."""
+    """Get Docker container statistics; raises DockerUnavailableError when the Docker CLI cannot run."""
     try:
         output = docker_compose_output(subprocess.run, "ps", "--format", "json").strip()
         containers = json.loads(output) if output.startswith("[") else [json.loads(line) for line in output.split("\n") if line]
@@ -32,7 +32,7 @@ def get_queue_stats(base_url: str | None = None) -> list[dict[str, Any]] | None:
 
 
 def get_service_logs(service: str, lines: int = 20) -> str:
-    """Get recent logs from a service."""
+    """Get recent logs from a service; raises DockerUnavailableError when the Docker CLI cannot run."""
     try:
         return docker_compose_output(subprocess.run, "logs", service, f"--tail={lines}")
     except subprocess.CalledProcessError, subprocess.TimeoutExpired:
@@ -47,9 +47,9 @@ def check_neo4j_status() -> str:
     env["NEO4J_USERNAME"] = neo4j_username
     env["NEO4J_PASSWORD"] = neo4j_password
     try:
-        result = subprocess.run(  # nosec B603 B607
-            [  # noqa: S607
-                "docker",
+        result = docker_run(
+            subprocess.run,
+            [
                 "exec",
                 "-e",
                 "NEO4J_USERNAME",
@@ -66,6 +66,8 @@ def check_neo4j_status() -> str:
             env=env,
         )
         return result.stdout
+    except DockerUnavailableError as e:
+        return f"Error: {e}"
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         stderr = getattr(e, "stderr", None)
         return f"Error: {stderr}" if isinstance(stderr, str) and stderr else f"Error: {e}"
@@ -74,9 +76,9 @@ def check_neo4j_status() -> str:
 def check_postgres_status() -> str:
     """Check PostgreSQL database status."""
     try:
-        result = subprocess.run(  # noqa: S603  # nosec B603 B607
-            [  # noqa: S607
-                "docker",
+        result = docker_run(
+            subprocess.run,
+            [
                 "exec",
                 "groovemap-postgres",
                 "psql",
@@ -94,6 +96,8 @@ def check_postgres_status() -> str:
             timeout=60,
         )
         return result.stdout
+    except DockerUnavailableError as e:
+        return f"Error: {e}"
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         stderr = getattr(e, "stderr", None)
         return f"Error: {stderr}" if isinstance(stderr, str) and stderr else f"Error: {e}"
@@ -106,13 +110,21 @@ def monitor_system() -> None:
 
     print("\n📦 Docker Container Status:")
     print("-" * 40)
-    containers = get_docker_stats()
+    try:
+        containers = get_docker_stats()
+    except DockerUnavailableError as e:
+        docker_problem = str(e)
+        containers = []
+    else:
+        docker_problem = None
     if containers:
         for container in containers:
             health = container.get("Health", "N/A")
             status = container.get("State", "unknown")
             name = container.get("Name", "unknown")
             print(f"  {name:<30} Status: {status:<15} Health: {health}")
+    elif docker_problem:
+        print(f"  Docker unavailable: {docker_problem}")
     else:
         print("  Unable to fetch container status")
 
@@ -145,6 +157,8 @@ def monitor_system() -> None:
     neo4j_status = check_neo4j_status()
     if not neo4j_status.startswith("Error:"):
         print(neo4j_status)
+    elif "Docker CLI" in neo4j_status:
+        print("  Docker unavailable: " + neo4j_status.removeprefix("Error: "))
     else:
         print("  Unable to connect to Neo4j")
 
@@ -153,6 +167,8 @@ def monitor_system() -> None:
     postgres_status = check_postgres_status()
     if not postgres_status.startswith("Error:"):
         print(postgres_status)
+    elif "Docker CLI" in postgres_status:
+        print("  Docker unavailable: " + postgres_status.removeprefix("Error: "))
     else:
         print("  Unable to connect to PostgreSQL")
 
@@ -161,7 +177,12 @@ def monitor_system() -> None:
     services = ["extractor-discogs", "extractor-musicbrainz", "graphinator", "tableinator", "brainzgraphinator", "brainztableinator"]
     error_found = False
     for service in services:
-        logs = get_service_logs(service, 50)
+        try:
+            logs = get_service_logs(service, 50)
+        except DockerUnavailableError as e:
+            print(f"  Docker unavailable: {e}")
+            error_found = True
+            break
         errors = [line for line in logs.split("\n") if "ERROR" in line or "Failed" in line]
         if errors:
             error_found = True

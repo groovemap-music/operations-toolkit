@@ -19,7 +19,8 @@ groups lines matching error, exception, traceback, and processing-failure patter
   logs.
 - A Docker timeout or command failure is counted and reported as an observation for that service;
   observed errors do not change the command's exit status. If the `docker` binary is not
-  installed, the command aborts with a Python traceback.
+  installed, the command prints `Error: Docker CLI not found on PATH` to stderr and exits with
+  status 1.
 
 ```bash
 uv run groovemap-check-errors 30
@@ -137,8 +138,8 @@ counts, PostgreSQL table statistics, and recent service error lines.
 - The error section shows at most the last five lines per service that contain `ERROR` or
   `Failed`.
 - Timeouts, command errors, and unreachable endpoints are reported for that subsystem without
-  stopping the remaining checks. The Docker CLI must be installed: without it the command
-  aborts with a Python traceback.
+  stopping the remaining checks. Without the Docker CLI, the Docker-backed sections print
+  `Docker unavailable: Docker CLI not found on PATH` while the RabbitMQ section still runs.
 - Output can reveal topology, object counts, and log excerpts and must be handled accordingly.
 
 ```bash
