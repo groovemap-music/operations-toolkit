@@ -39,34 +39,68 @@ def get_service_logs(service: str, lines: int = 20) -> str:
         return ""
 
 
+def _cypher_shell(query: str, env: dict[str, str]) -> str:
+    """Run one bounded cypher-shell statement in the Neo4j container and return stdout."""
+    result = docker_run(
+        subprocess.run,
+        ["exec", "-e", "NEO4J_USERNAME", "-e", "NEO4J_PASSWORD", "groovemap-neo4j", "cypher-shell", "--format", "plain", query],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+        env=env,
+    )
+    stdout: str = result.stdout
+    return stdout
+
+
+def _quote_identifier(name: str) -> str:
+    """Backtick-quote a Cypher label so any name from the database is safe to embed."""
+    return "`" + name.replace("`", "``") + "`"
+
+
+def _string_literal(value: str) -> str:
+    """Render a single-quoted Cypher string literal."""
+    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def _parse_labels(output: str) -> list[str]:
+    """Parse the single-column plain-format ``db.labels()`` result, skipping the header row."""
+    labels = []
+    for line in output.splitlines()[1:]:
+        value = line.strip()
+        if len(value) >= 2 and value.startswith('"') and value.endswith('"'):
+            labels.append(value[1:-1].replace('\\"', '"').replace("\\\\", "\\"))
+    return labels
+
+
+def build_node_count_query(labels: list[str]) -> str:
+    """Build a per-label node count that Neo4j answers from the count store.
+
+    ``MATCH (n) RETURN labels(n)[0], count(n)`` reads every node. A ``count(n)`` that is alone in
+    its RETURN is planned as ``NodeCountFromCountStore`` (one database hit per label), so each
+    label gets its own ``CALL () { MATCH (n:L) RETURN count(n) }`` branch; the label name is
+    projected outside the subquery so it does not demote the plan to a scan.
+    """
+    branches = [
+        f"CALL () {{ MATCH (n:{_quote_identifier(label)}) RETURN count(n) AS count }} RETURN {_string_literal(label)} AS label, count"
+        for label in labels
+    ]
+    return "CALL () { " + " UNION ALL ".join(branches) + " } RETURN label, count ORDER BY count DESC LIMIT 10"
+
+
 def check_neo4j_status() -> str:
-    """Check Neo4j database status."""
+    """Check Neo4j database status with count-store reads, never a full node scan."""
     neo4j_username = os.environ.get("NEO4J_USERNAME", "neo4j")
     neo4j_password = get_secret("NEO4J_PASSWORD", "")
     env = os.environ.copy()
     env["NEO4J_USERNAME"] = neo4j_username
     env["NEO4J_PASSWORD"] = neo4j_password
     try:
-        result = docker_run(
-            subprocess.run,
-            [
-                "exec",
-                "-e",
-                "NEO4J_USERNAME",
-                "-e",
-                "NEO4J_PASSWORD",
-                "groovemap-neo4j",
-                "cypher-shell",
-                "MATCH (n) RETURN labels(n)[0] as label, count(n) as count ORDER BY count DESC LIMIT 10",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=60,
-            env=env,
-        )
-        stdout: str = result.stdout
-        return stdout
+        labels = _parse_labels(_cypher_shell("CALL db.labels() YIELD label RETURN label", env))
+        if not labels:
+            return "label, count\n"
+        return _cypher_shell(build_node_count_query(labels), env)
     except DockerUnavailableError as e:
         return f"Error: {e}"
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
@@ -89,7 +123,7 @@ def check_postgres_status() -> str:
                 os.environ.get("POSTGRES_DATABASE", "groovemap"),
                 "-t",
                 "-c",
-                "SELECT relname, pg_size_pretty(pg_relation_size(schemaname||'.'||relname)) as size, n_live_tup as rows FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 10;",
+                "SELECT relname, pg_size_pretty(pg_relation_size(relid)) as size, n_live_tup as rows FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 10;",
             ],
             capture_output=True,
             text=True,
