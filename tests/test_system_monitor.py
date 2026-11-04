@@ -87,9 +87,52 @@ def test_get_service_logs_error() -> None:
 # check_neo4j_status / check_postgres_status
 # --------------------------------------------------------------------------- #
 def test_check_neo4j_status_success() -> None:
-    with patch.object(system_monitor.subprocess, "run", return_value=_completed("label | count")) as run:
-        assert system_monitor.check_neo4j_status() == "label | count"
-    assert run.call_args.kwargs["timeout"] == 60
+    labels = _completed('label\n"Release"\n"Artist"\n')
+    counts = _completed('label, count\n"Release", 5\n"Artist", 2\n')
+    with patch.object(system_monitor.subprocess, "run", side_effect=[labels, counts]) as run:
+        assert system_monitor.check_neo4j_status() == 'label, count\n"Release", 5\n"Artist", 2\n'
+    assert run.call_count == 2
+    assert all(call.kwargs["timeout"] == 60 for call in run.call_args_list)
+    first, second = (call.args[0][-1] for call in run.call_args_list)
+    assert first == "CALL db.labels() YIELD label RETURN label"
+    assert second == system_monitor.build_node_count_query(["Release", "Artist"])
+
+
+def test_check_neo4j_status_no_labels_skips_count_query() -> None:
+    with patch.object(system_monitor.subprocess, "run", return_value=_completed("label\n")) as run:
+        assert system_monitor.check_neo4j_status() == "label, count\n"
+    assert run.call_count == 1
+
+
+def test_node_count_query_never_scans_all_nodes() -> None:
+    query = system_monitor.build_node_count_query(["Release", "Artist"])
+    assert "MATCH (n)" not in query
+    assert "labels(n)" not in query
+    # Each count(n) is alone in its RETURN so Neo4j plans NodeCountFromCountStore.
+    assert "CALL () { MATCH (n:`Release`) RETURN count(n) AS count } RETURN 'Release' AS label, count" in query
+    assert "CALL () { MATCH (n:`Artist`) RETURN count(n) AS count } RETURN 'Artist' AS label, count" in query
+    assert query.count("UNION ALL") == 1
+    assert query.endswith("RETURN label, count ORDER BY count DESC LIMIT 10")
+
+
+def test_node_count_query_quotes_hostile_labels() -> None:
+    query = system_monitor.build_node_count_query(["We`ird", "it's"])
+    assert "MATCH (n:`We``ird`)" in query
+    assert "RETURN 'We`ird' AS label" in query
+    assert "RETURN 'it\\'s' AS label" in query
+
+
+def test_parse_labels_skips_header_and_unquotes() -> None:
+    assert system_monitor._parse_labels('label\n"Release"\n"We`ird"\n"a\\"b"\n') == ["Release", "We`ird", 'a"b']
+    assert system_monitor._parse_labels("") == []
+
+
+def test_postgres_query_uses_relid_not_unquoted_name() -> None:
+    with patch.object(system_monitor.subprocess, "run", return_value=_completed("x")) as run:
+        system_monitor.check_postgres_status()
+    sql = run.call_args.args[0][-1]
+    assert "pg_relation_size(relid)" in sql
+    assert "||'.'||" not in sql
 
 
 def test_check_neo4j_status_error_with_stderr() -> None:
