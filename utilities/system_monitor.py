@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess  # nosec B404
+import urllib.parse
 from typing import Any
 
 import requests
@@ -43,7 +44,20 @@ def _cypher_shell(query: str, env: dict[str, str]) -> str:
     """Run one bounded cypher-shell statement in the Neo4j container and return stdout."""
     result = docker_run(
         subprocess.run,
-        ["exec", "-e", "NEO4J_USERNAME", "-e", "NEO4J_PASSWORD", "groovemap-neo4j", "cypher-shell", "--format", "plain", query],
+        [
+            "exec",
+            "-e",
+            "NEO4J_USERNAME",
+            "-e",
+            "NEO4J_PASSWORD",
+            "groovemap-neo4j",
+            "cypher-shell",
+            "--access-mode",
+            "read",
+            "--format",
+            "plain",
+            query,
+        ],
         capture_output=True,
         text=True,
         check=True,
@@ -64,13 +78,50 @@ def _string_literal(value: str) -> str:
     return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
+# Label names are percent-encoded (UTF-8 bytes) before they reach the output, so every label is exactly
+# one line that a reader can invert. cypher-shell prints newlines, tabs, control characters and the
+# Unicode line separators raw, and escapes only the double quote. Encoded: "%" (the escape character
+# itself), backslash, double quote, C0 controls, DEL, and the separators Python's splitlines() breaks on.
+_ENCODED_CHARS: list[tuple[str, str]] = [
+    (char, "".join(f"%{byte:02X}" for byte in char.encode("utf-8")))
+    for char in ["%", "\\", '"', *map(chr, [*range(0x20), 0x7F, 0x85, 0x2028, 0x2029])]
+]
+_ENCODED_BY_CHAR = dict(_ENCODED_CHARS)
+
+
+def _encode_label(label: str) -> str:
+    """Percent-encode a label name for one-line display and reversible parsing."""
+    return "".join(_ENCODED_BY_CHAR.get(char, char) for char in label)
+
+
+def _decode_label(encoded: str) -> str:
+    """Invert ``_encode_label``: every ``%`` in an encoded name starts a UTF-8 byte escape."""
+    return urllib.parse.unquote(encoded, errors="strict")
+
+
+def _labels_query() -> str:
+    """Return every label, encoded in Cypher so each one is a single output line."""
+    expression = "label"
+    for char, encoded in _ENCODED_CHARS:
+        expression = f"replace({expression}, {_unicode_literal(char)}, {_string_literal(encoded)})"
+    return f"CALL db.labels() YIELD label RETURN {expression} AS label"
+
+
+def _unicode_literal(char: str) -> str:
+    """Render a one-character Cypher string literal. A backslash uses ``\\\\``: ``\\u005c`` breaks the lexer."""
+    if char == "\\":
+        return "'\\\\'"
+    return f"'\\u{ord(char):04x}'"
+
+
 def _parse_labels(output: str) -> list[str]:
     """Parse the single-column plain-format ``db.labels()`` result, skipping the header row."""
     labels = []
-    for line in output.splitlines()[1:]:
+    # Split on "\n" only: str.splitlines() also breaks on U+2028 and other separators in label names.
+    for line in output.split("\n")[1:]:
         value = line.strip()
         if len(value) >= 2 and value.startswith('"') and value.endswith('"'):
-            labels.append(value[1:-1].replace('\\"', '"').replace("\\\\", "\\"))
+            labels.append(_decode_label(value[1:-1]))
     return labels
 
 
@@ -83,7 +134,7 @@ def build_node_count_query(labels: list[str]) -> str:
     projected outside the subquery so it does not demote the plan to a scan.
     """
     branches = [
-        f"CALL () {{ MATCH (n:{_quote_identifier(label)}) RETURN count(n) AS count }} RETURN {_string_literal(label)} AS label, count"
+        f"CALL () {{ MATCH (n:{_quote_identifier(label)}) RETURN count(n) AS count }} RETURN {_string_literal(_encode_label(label))} AS label, count"
         for label in labels
     ]
     return "CALL () { " + " UNION ALL ".join(branches) + " } RETURN label, count ORDER BY count DESC LIMIT 10"
@@ -97,7 +148,7 @@ def check_neo4j_status() -> str:
     env["NEO4J_USERNAME"] = neo4j_username
     env["NEO4J_PASSWORD"] = neo4j_password
     try:
-        labels = _parse_labels(_cypher_shell("CALL db.labels() YIELD label RETURN label", env))
+        labels = _parse_labels(_cypher_shell(_labels_query(), env))
         if not labels:
             return "label, count\n"
         return _cypher_shell(build_node_count_query(labels), env)

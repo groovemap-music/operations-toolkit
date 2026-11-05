@@ -94,8 +94,28 @@ def test_check_neo4j_status_success() -> None:
     assert run.call_count == 2
     assert all(call.kwargs["timeout"] == 60 for call in run.call_args_list)
     first, second = (call.args[0][-1] for call in run.call_args_list)
-    assert first == "CALL db.labels() YIELD label RETURN label"
+    assert first == system_monitor._labels_query()
     assert second == system_monitor.build_node_count_query(["Release", "Artist"])
+
+
+def test_cypher_shell_runs_in_read_access_mode() -> None:
+    with patch.object(system_monitor.subprocess, "run", return_value=_completed("x")) as run:
+        system_monitor._cypher_shell("CALL db.labels() YIELD label RETURN label", {})
+    argv = run.call_args.args[0]
+    assert argv[argv.index("--access-mode") + 1] == "read"
+    assert argv.index("--access-mode") < argv.index("--format")
+
+
+def test_check_neo4j_status_keeps_labels_with_newlines_and_separators() -> None:
+    labels = _completed('label\n"new%0Aline"\n"u2028%E2%80%A8x"\n"ctl%01x"\n')
+    counts = _completed('label, count\n"new%0Aline", 2\n"u2028%E2%80%A8x", 1\n"ctl%01x", 1\n')
+    with patch.object(system_monitor.subprocess, "run", side_effect=[labels, counts]) as run:
+        assert system_monitor.check_neo4j_status() == counts.stdout
+    query = run.call_args_list[1].args[0][-1]
+    assert "MATCH (n:`new\nline`)" in query
+    assert "MATCH (n:`u2028\u2028x`)" in query
+    assert "MATCH (n:`ctl\x01x`)" in query
+    assert "RETURN 'new%0Aline' AS label" in query
 
 
 def test_check_neo4j_status_no_labels_skips_count_query() -> None:
@@ -122,9 +142,50 @@ def test_node_count_query_quotes_hostile_labels() -> None:
     assert "RETURN 'it\\'s' AS label" in query
 
 
-def test_parse_labels_skips_header_and_unquotes() -> None:
-    assert system_monitor._parse_labels('label\n"Release"\n"We`ird"\n"a\\"b"\n') == ["Release", "We`ird", 'a"b']
+def test_parse_labels_skips_header_and_decodes() -> None:
+    assert system_monitor._parse_labels('label\n"Release"\n"We`ird"\n"a%22b"\n"back%5Cslash"\n') == [
+        "Release",
+        "We`ird",
+        'a"b',
+        "back\\slash",
+    ]
     assert system_monitor._parse_labels("") == []
+
+
+ODD_LABELS = [
+    "new\nline",
+    "tab\there",
+    "cr\rhere",
+    "ctl\x01x",
+    "del\x7fx",
+    "u0085\x85x",
+    "u2028\u2028x",
+    "u2029\u2029x",
+    'quote"x',
+    "back\\slash",
+    "pct%x",
+    "pct%22literal",
+    "We`ird",
+    "it's",
+    "emoji 🎵",
+]
+
+
+def test_encode_decode_round_trips_every_odd_label() -> None:
+    for label in ODD_LABELS:
+        encoded = system_monitor._encode_label(label)
+        assert "\n" not in encoded and "\r" not in encoded
+        assert not any(char < " " or char in "\x7f\x85\u2028\u2029" for char in encoded), label
+        assert system_monitor._decode_label(encoded) == label
+
+
+def test_labels_query_encodes_in_cypher_and_parses_back() -> None:
+    query = system_monitor._labels_query()
+    assert query.startswith("CALL db.labels() YIELD label RETURN replace(")
+    assert query.endswith(" AS label")
+    # Cypher-side encoding must match the Python-side encoding that the count query uses.
+    simulated = "\n".join(["label", *(f'"{system_monitor._encode_label(label)}"' for label in ODD_LABELS)])
+    assert system_monitor._parse_labels(simulated) == ODD_LABELS
 
 
 def test_postgres_query_uses_relid_not_unquoted_name() -> None:
